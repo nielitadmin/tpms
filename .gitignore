@@ -1,0 +1,10 @@
+# Environment variables - never commit real credentials
+.env
+
+# Uploaded files
+uploads/
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+.vscode/
