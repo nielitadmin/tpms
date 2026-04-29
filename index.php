@@ -136,7 +136,7 @@
                 <div class="row g-4">
                     <div class="col-md-6">
                         <div class="map-wrapper">
-                            <img src="public/uploads/images/odisha_map.jpg" alt="Map of Odisha" class="map-image">
+                            <img src="uploads/images/odisha_map.png" alt="Map of Odisha" class="map-image">
                             <div class="bg-light text-center py-2 border-top">
                                 <span class="fw-bold text-secondary">Odisha State</span>
                             </div>
@@ -145,7 +145,7 @@
                     
                     <div class="col-md-6">
                         <div class="map-wrapper">
-                            <img src="public/uploads/images/chhattisgarh_map.jpg" alt="Map of Chhattisgarh" class="map-image">
+                            <img src="public/uploads/images/chhattisgarh_map.png" alt="Map of Chhattisgarh" class="map-image">
                             <div class="bg-light text-center py-2 border-top">
                                 <span class="fw-bold text-secondary">Chhattisgarh State</span>
                             </div>
