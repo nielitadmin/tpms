@@ -89,89 +89,106 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     <form id="signupForm" method="POST" action="" enctype="multipart/form-data">
                         
                         <div class="form-step active" id="step-0">
-                            <h5 class="border-bottom pb-2 mb-4 text-primary">Step 1: Account Setup & Signatory Details</h5>
-                            <div class="row bg-light p-3 rounded mb-4 border">
+                            <h5 class="border-bottom pb-2 mb-4 text-primary fw-bold"><i class="bi bi-person-badge"></i> Step 1: Account & Center Details</h5>
+                            
+                            <div class="row bg-light p-3 rounded mb-4 border shadow-sm">
                                 <div class="col-md-4 mb-3"><label class="fw-bold text-secondary">Unique Center ID</label><input type="text" name="center_id" class="form-control" required placeholder="e.g. OD001"></div>
                                 <div class="col-md-4 mb-3"><label class="fw-bold text-secondary">Create Password</label><input type="password" name="password" class="form-control" required minlength="6"></div>
                                 <div class="col-md-4 mb-3"><label class="fw-bold text-secondary">Confirm Password</label><input type="password" name="confirm_password" class="form-control" required minlength="6"></div>
                             </div>
 
-                            <h6 class="text-secondary mb-3">Signatory Information (Sec 3)</h6>
+                            <h6 class="text-secondary mb-3 fw-bold">Legal Status of Institute (Sec 9)</h6>
+                            <div class="row mb-4">
+                                <div class="col-md-12 mb-3">
+                                    <label class="form-label fw-bold">Select Category</label>
+                                    <select name="legal_status" id="legalStatus" class="form-select border-primary" required>
+                                        <option value="">-- Select Category --</option>
+                                        <option value="proprietorship">(1) Proprietorship Concern</option>
+                                        <option value="partnership">(2) Partnership</option>
+                                        <option value="society">(3) Society / NGO</option>
+                                        <option value="trust">(4) Trust</option>
+                                        <option value="company">(5) Company</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <h6 class="text-secondary mb-3 fw-bold">Signatory Information (Sec 3)</h6>
                             <div class="row">
                                 <div class="col-md-4 mb-3"><label class="form-label fw-bold">Name</label><input type="text" name="sig_name" class="form-control" required></div>
                                 <div class="col-md-4 mb-3"><label class="form-label fw-bold">Father's Name</label><input type="text" name="sig_fname" class="form-control" required></div>
                                 <div class="col-md-4 mb-3"><label class="form-label fw-bold">Designation</label><input type="text" name="sig_designation" class="form-control" required></div>
-                                
-                                <div class="col-md-6 mb-3"><label class="form-label fw-bold">Address 1</label><input type="text" name="sig_address1" class="form-control" required></div>
-                                <div class="col-md-6 mb-3"><label class="form-label fw-bold">Locality/District/State</label><input type="text" name="sig_locality" class="form-control" required></div>
-                                
+                                <div class="col-md-6 mb-3"><label class="form-label fw-bold">Address</label><input type="text" name="sig_address" class="form-control" required></div>
+                                <div class="col-md-6 mb-3"><label class="form-label fw-bold">Locality/District/State/Pin</label><input type="text" name="sig_locality" class="form-control" required></div>
                                 <div class="col-md-4 mb-3"><label class="form-label fw-bold">Mobile</label><input type="text" name="sig_mobile" class="form-control" required></div>
                                 <div class="col-md-4 mb-3"><label class="form-label fw-bold">Email (Used for Login)</label><input type="email" name="sig_email" class="form-control" required></div>
                                 <div class="col-md-4 mb-3"><label class="form-label fw-bold">ID Proof Num (Pan/Aadhar)</label><input type="text" name="sig_id_number" class="form-control" required></div>
-                                
+                            </div>
+
+                            <h6 class="text-secondary mt-3 mb-3 fw-bold">Premises Information (Sec 4)</h6>
+                            <div class="row">
                                 <div class="col-md-6 mb-3">
-                                    <label class="form-label fw-bold">Premise Type (Sec 4)</label>
-                                    <select name="premise_type" class="form-select" required>
-                                        <option value="">Select...</option><option value="Owned">Owned</option><option value="Rented">Rented (Long Term)</option>
-                                    </select>
+                                    <label class="form-label fw-bold">Premise Type</label>
+                                    <select name="premise_type" class="form-select" required><option value="">Select...</option><option value="Owned">Owned</option><option value="Rented">Rented</option></select>
+                                </div>
+                                <div class="col-md-6 mb-3"><label class="form-label fw-bold">Premise Valid Upto</label><input type="date" name="premise_valid_upto" class="form-control" required></div>
+                            </div>
+                        </div>
+
+                            <h6 class="text-secondary mt-3 mb-3 fw-bold">Premises Information (Sec 4)</h6>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label fw-bold">Premise Type</label>
+                                    <select name="premise_type" class="form-select" required><option value="">Select...</option><option value="Owned">Owned</option><option value="Rented">Rented</option></select>
                                 </div>
                                 <div class="col-md-6 mb-3"><label class="form-label fw-bold">Premise Valid Upto</label><input type="date" name="premise_valid_upto" class="form-control" required></div>
                             </div>
                         </div>
 
                         <div class="form-step" id="step-1">
-                            <h5 class="border-bottom pb-2 mb-4 text-primary">Step 2: Faculty Details (Sec 12 & 13)</h5>
+                            <h5 class="border-bottom pb-2 mb-4 text-primary fw-bold"><i class="bi bi-building"></i> Step 2: Infrastructure & Faculty</h5>
+                            
+                            <h6 class="text-secondary mb-3 fw-bold">Basic Infrastructure (Required for Approval)</h6>
+                            <div class="row bg-light p-3 rounded mb-4 border">
+                                <div class="col-md-3 mb-3"><label class="form-label fw-bold">Carpet Area (Sq ft)</label><input type="number" name="infra_area" class="form-control" required></div>
+                                <div class="col-md-3 mb-3"><label class="form-label fw-bold">No. of Classrooms</label><input type="number" name="infra_classes" class="form-control" required></div>
+                                <div class="col-md-3 mb-3"><label class="form-label fw-bold">No. of Comp. Labs</label><input type="number" name="infra_labs" class="form-control" required></div>
+                                <div class="col-md-3 mb-3"><label class="form-label fw-bold">Total Seating Capacity</label><input type="number" name="infra_seats" class="form-control" required></div>
+                            </div>
+
+                            <h6 class="text-secondary mb-3 fw-bold">Primary Faculty Details</h6>
                             <div class="row">
                                 <div class="col-md-6 mb-3"><label class="form-label fw-bold">Name of Primary Faculty</label><input type="text" name="fac_name[]" class="form-control" required></div>
                                 <div class="col-md-6 mb-3"><label class="form-label fw-bold">Qualification</label><input type="text" name="fac_qualification[]" class="form-control" required placeholder="e.g. OSCIT"></div>
-                                <div class="col-md-4 mb-3"><label class="form-label fw-bold">Year of Passing</label><input type="text" name="fac_yop[]" class="form-control" required></div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label fw-bold">Examination Passed</label>
+                                    <select name="fac_exam[]" class="form-select" required>
+                                        <option value="">Select...</option><option value="MCA">MCA</option><option value="BCA">BCA</option><option value="OSCIT">OSCIT</option><option value="Others">Others</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4 mb-3"><label class="form-label fw-bold">Year of Passing</label><input type="number" name="fac_yop[]" class="form-control" required min="1990" max="2030"></div>
                                 <div class="col-md-4 mb-3"><label class="form-label fw-bold">Board / University</label><input type="text" name="fac_board[]" class="form-control" required></div>
-                                <div class="col-md-4 mb-3"><label class="form-label fw-bold">Experience (Dates)</label><input type="text" name="fac_exp[]" class="form-control" placeholder="DD-MM-YY to DD-MM-YY" required></div>
+                                <div class="col-md-6 mb-3"><label class="form-label fw-bold">Experience (Dates)</label><input type="text" name="fac_exp[]" class="form-control" placeholder="DD-MM-YYYY to DD-MM-YYYY" required></div>
+                                <div class="col-md-6 mb-3"><label class="form-label fw-bold">Name of Org. (Experience)</label><input type="text" name="fac_exp_org[]" class="form-control" required></div>
                             </div>
                         </div>
 
                         <div class="form-step" id="step-2">
-                            <h5 class="border-bottom pb-2 mb-4 text-primary">Step 3: Financial Details (Sec 14)</h5>
+                            <h5 class="border-bottom pb-2 mb-4 text-primary fw-bold"><i class="bi bi-graph-up-arrow"></i> Step 3: Financial Details</h5>
                             <div class="row">
                                 <div class="col-md-6 mb-3"><label class="form-label fw-bold">Financial Ending Year</label><input type="number" name="fin_year" class="form-control" placeholder="e.g. 2024" required></div>
-                                <div class="col-md-6 mb-3"><label class="form-label fw-bold">Turnover in Computer Training</label><input type="text" name="fin_turnover" class="form-control" required></div>
+                                <div class="col-md-6 mb-3"><label class="form-label fw-bold">Turnover in Computer Training (₹)</label><input type="text" name="fin_turnover_comp" class="form-control" required></div>
+                                <div class="col-md-6 mb-3"><label class="form-label fw-bold">Turnover in Other Activities (₹)</label><input type="text" name="fin_turnover_other" class="form-control" required></div>
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label fw-bold">Income Tax Exempted</label>
                                     <select name="fin_tax_exempt" class="form-select" required><option value="">Select...</option><option value="Y">Yes</option><option value="N">No</option></select>
                                 </div>
-                                <div class="col-md-6 mb-3"><label class="form-label fw-bold">Students Placed</label><input type="number" name="fin_placed" class="form-control" required></div>
+                                <div class="col-md-6 mb-3"><label class="form-label fw-bold">Total Students Placed</label><input type="number" name="fin_placed" class="form-control" required></div>
                             </div>
                         </div>
 
                         <div class="form-step" id="step-3">
-                            <h5 class="border-bottom pb-2 mb-4 text-primary">Step 4: Upload Documents (Sec 17)</h5>
-                            <div class="alert alert-warning small">Upload PDF/JPG (Max 2MB each)</div>
-                            <div class="row">
-                                <div class="col-md-6 mb-3"><label class="form-label small fw-bold">1. Authorized ID Proof</label><input type="file" name="doc_id_proof" class="form-control form-control-sm" required></div>
-                                <div class="col-md-6 mb-3"><label class="form-label small fw-bold">2. Signatory Signature</label><input type="file" name="doc_signature" class="form-control form-control-sm" required></div>
-                                <div class="col-md-6 mb-3"><label class="form-label small fw-bold">3. Layout Map</label><input type="file" name="doc_layout" class="form-control form-control-sm" required></div>
-                                <div class="col-md-6 mb-3"><label class="form-label small fw-bold">4. Govt Registration Cert.</label><input type="file" name="doc_govt_reg" class="form-control form-control-sm" required></div>
-                                <div class="col-md-6 mb-3"><label class="form-label small fw-bold">5. Lease/Rent Agreement (NOC)</label><input type="file" name="doc_lease" class="form-control form-control-sm" required></div>
-                                <div class="col-md-6 mb-3"><label class="form-label small fw-bold">6. Building/Lab Photos</label><input type="file" name="doc_photos" class="form-control form-control-sm" required></div>
-                            </div>
-                        </div>
-
-                        <div class="form-step" id="step-4">
-                            <h5 class="border-bottom pb-2 mb-4 text-primary">Step 5: Final Declaration</h5>
-                            <div class="alert alert-info">I declare that all information and uploaded documents are authentic.</div>
-                            <div class="form-check mb-4">
-                                <input class="form-check-input" type="checkbox" id="agreeTerms" required>
-                                <label class="form-check-label fw-bold" for="agreeTerms">I agree to NIELIT Terms & Conditions</label>
-                            </div>
-                            <button type="submit" class="btn btn-success btn-lg w-100 fw-bold shadow-sm">Submit Application for Admin Approval</button>
-                        </div>
-
-                        <div class="d-flex justify-content-between mt-5" id="formNavigation">
-                            <button type="button" class="btn btn-secondary px-4 fw-bold" id="prevBtn" onclick="nextPrev(-1)" style="display: none;">Previous</button>
-                            <button type="button" class="btn btn-primary px-4 fw-bold ms-auto" id="nextBtn" onclick="nextPrev(1)">Next</button>
-                        </div>
-
-                    </form>
+                            <h5 class="border-bottom pb-2 mb-4 text-primary fw-bold"><i class="bi bi-folder-check"></i> Step 4: Upload Documents</h5>
+                            <div class="alert alert-warning small"><i class="bi bi-exclamation-triangle"></i> Upload PDF/JPG
                     <div class="text-center mt-4">
                         <a href="../login.php" class="text-decoration-none fw-bold text-secondary">Already registered? Login here</a>
                     </div>
