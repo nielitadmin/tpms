@@ -1,610 +1,527 @@
+<?php
+// Start a clean session
+session_name('NIELIT_LANDING');
+session_start();
+
+// Clear any existing sessions when coming to the landing page
+session_destroy();
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Training Partner System | NIELIT Bhubaneswar</title>
+    <title>Training Partner System - NIELIT Bhubaneswar</title>
+    
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&family=Noto+Serif:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
     <style>
         :root {
-            --gov-navy:   #1a3a6b;
-            --gov-blue:   #1e5fa8;
-            --gov-ltblue: #2878c8;
-            --gov-orange: #e07b20;
-            --gov-saffron:#f4a12a;
-            --gov-green:  #177a3c;
-            --gov-red:    #c0392b;
-            --bg:         #f2f4f7;
-            --white:      #ffffff;
-            --border:     #cdd4df;
-            --text:       #1c2b3a;
-            --text-muted: #5a6a7e;
-            --radius:     6px;
+            /* Premium Color Palette */
+            --primary: #155E75;        /* Official NIELIT Blue */
+            --primary-light: #0284C7;  
+            --primary-bg: #EFF6FF;     
+            --candidate: #059669;      
+            --candidate-bg: #ECFDF5;
+            --tp: #0D9488;
+            --tp-bg: #CCFBF1;
+            --text-dark: #0F172A;
+            --text-muted: #475569;
+            --bg-body: #F8FAFC;
+            --surface: #FFFFFF;
+            --border: #E2E8F0;
+            --gold: #D97706;
+            --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 10px 25px -5px rgba(0, 0, 0, 0.08);
+            --radius-lg: 20px;
         }
 
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        html { scroll-behavior: smooth; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
         body {
-            font-family: 'Noto Sans', sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            font-size: 14px;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            color: var(--text-dark);
+            background-color: var(--bg-body);
+            min-height: 100vh; 
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
         }
 
-        /* TOP STRIP */
-        .gov-topstrip {
-            background: #1a3a6b;
-            padding: 5px 0;
-        }
-        .gov-topstrip-inner {
-            max-width: 1280px; margin: 0 auto; padding: 0 20px;
-            display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px;
-        }
-        .gov-topstrip a, .gov-topstrip span {
-            color: rgba(255,255,255,0.80); font-size: 11.5px; text-decoration: none; padding: 2px 8px;
-        }
-        .gov-topstrip a:hover { color: #fff; text-decoration: underline; }
-        .gov-topstrip .left, .gov-topstrip .right { display: flex; align-items: center; gap: 4px; }
-        .topstrip-divider { color: rgba(255,255,255,0.3); }
-
-        /* FLAG BAR */
-        .flag-bar {
-            height: 4px;
-            background: linear-gradient(to right,
-                #ff9933 0%, #ff9933 33.33%,
-                #ffffff 33.33%, #ffffff 66.66%,
-                #138808 66.66%, #138808 100%);
-        }
-
-        /* HEADER */
-        .site-header {
-            background: var(--white);
-            border-bottom: 3px solid var(--gov-orange);
-            padding: 14px 0;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.07);
-        }
-        .header-inner {
-            max-width: 1280px; margin: 0 auto; padding: 0 20px;
-            display: flex; align-items: center; gap: 20px;
-        }
-        .header-logo {
-            width: 72px; height: 72px; background: var(--gov-navy); border-radius: 50%;
-            display: flex; align-items: center; justify-content: center; font-size: 2rem; flex-shrink: 0;
-        }
-        .header-text { flex: 1; }
-        .header-text .ministry { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
-        .header-text h1 { font-family: 'Noto Serif', serif; font-size: 1.55rem; font-weight: 700; color: var(--gov-navy); line-height: 1.2; margin: 3px 0; }
-        .header-text .subtitle { font-size: 12px; color: var(--text-muted); }
-        .header-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
-        .header-right .emblem { font-size: 2.6rem; line-height: 1; }
-        .header-right .tagline { font-size: 11px; color: var(--gov-navy); font-weight: 600; letter-spacing: 0.05em; }
-
-        /* MAIN NAV */
-        .main-nav { background: var(--gov-navy); }
-        .nav-inner {
-            max-width: 1280px; margin: 0 auto; padding: 0 20px;
-            display: flex; align-items: center; flex-wrap: wrap;
-        }
-        .nav-inner a {
-            color: rgba(255,255,255,0.88); text-decoration: none; padding: 12px 18px;
-            font-size: 13px; font-weight: 500; border-right: 1px solid rgba(255,255,255,0.1);
-            transition: background 0.15s; display: inline-flex; align-items: center; gap: 6px;
-        }
-        .nav-inner a:first-child { border-left: 1px solid rgba(255,255,255,0.1); }
-        .nav-inner a:hover { background: var(--gov-ltblue); color: #fff; }
-        .nav-inner a.active { background: var(--gov-orange); }
-        .nav-spacer { flex: 1; }
-        .nav-inner .nav-login-btn {
-            background: var(--gov-orange); color: #fff; padding: 10px 22px; font-weight: 600;
-            border-radius: 3px; margin: 6px 0; border-right: none !important; border-left: none !important;
-        }
-        .nav-inner .nav-login-btn:hover { background: #c96a10; }
-
-        /* NOTICE TICKER */
-        .notice-ticker {
-            background: #fef9ec; border-top: 1px solid #e8d89a;
-            border-bottom: 2px solid var(--gov-orange); padding: 7px 0; overflow: hidden;
-        }
-        .ticker-inner { max-width: 1280px; margin: 0 auto; padding: 0 20px; display: flex; align-items: center; gap: 14px; }
-        .ticker-label {
-            background: var(--gov-red); color: #fff; font-size: 11px; font-weight: 700;
-            padding: 3px 10px; border-radius: 3px; letter-spacing: 0.06em; white-space: nowrap; flex-shrink: 0;
-        }
-        .ticker-track { flex: 1; overflow: hidden; }
-        .ticker-scroll {
-            display: inline-flex; gap: 60px; white-space: nowrap;
-            animation: tickerMove 35s linear infinite;
-        }
-        .ticker-scroll span { font-size: 12.5px; color: var(--text); }
-        .ticker-scroll span a { color: var(--gov-blue); text-decoration: none; }
-        .ticker-scroll span a:hover { text-decoration: underline; }
-        @keyframes tickerMove { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
-
-        /* BREADCRUMB */
-        .breadcrumb-bar { background: #e8ecf4; border-bottom: 1px solid var(--border); padding: 7px 0; }
-        .breadcrumb-inner { max-width: 1280px; margin: 0 auto; padding: 0 20px; font-size: 12px; color: var(--text-muted); }
-        .breadcrumb-inner a { color: var(--gov-blue); text-decoration: none; }
-        .breadcrumb-inner a:hover { text-decoration: underline; }
-        .breadcrumb-inner .sep { margin: 0 6px; color: #aaa; }
-
-        /* HERO BANNER */
-        .hero-banner {
-            background: linear-gradient(135deg, #1a3a6b 0%, #1e5fa8 50%, #2878c8 100%);
-            padding: 40px 0 36px; border-bottom: 4px solid var(--gov-orange);
-            position: relative; overflow: hidden;
-        }
-        .hero-banner::before {
-            content: ''; position: absolute; right: -60px; top: -60px;
-            width: 320px; height: 320px; border: 40px solid rgba(255,255,255,0.04); border-radius: 50%;
-        }
-        .hero-inner { max-width: 1280px; margin: 0 auto; padding: 0 20px; position: relative; z-index: 2; }
-        .hero-inner h2 {
-            font-family: 'Noto Serif', serif; font-size: 1.8rem; font-weight: 700;
-            color: #fff; line-height: 1.3; margin-bottom: 10px;
-        }
-        .hero-inner p { color: rgba(255,255,255,0.75); font-size: 13.5px; max-width: 600px; line-height: 1.7; margin-bottom: 22px; }
-        .hero-btn {
-            display: inline-block; background: var(--gov-orange); color: #fff; text-decoration: none;
-            font-weight: 600; font-size: 13px; padding: 10px 26px; border-radius: var(--radius);
-            border: 2px solid rgba(255,255,255,0.2); transition: background 0.2s;
-        }
-        .hero-btn:hover { background: #c96a10; }
-        .hero-stats-row {
-            display: flex; margin-top: 30px; background: rgba(0,0,0,0.25);
-            border-radius: var(--radius); overflow: hidden; border: 1px solid rgba(255,255,255,0.1);
-            max-width: 560px;
-        }
-        .hero-stat { flex: 1; padding: 14px 16px; text-align: center; border-right: 1px solid rgba(255,255,255,0.1); }
-        .hero-stat:last-child { border-right: none; }
-        .hero-stat .num { font-family: 'Noto Serif', serif; font-size: 1.5rem; font-weight: 700; color: var(--gov-saffron); line-height: 1; }
-        .hero-stat .lbl { font-size: 10.5px; color: rgba(255,255,255,0.6); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
-
-        /* PAGE BODY */
-        .page-body {
-            max-width: 1280px; margin: 28px auto; padding: 0 20px;
-            display: grid; grid-template-columns: 1fr 360px; gap: 24px; align-items: start;
-        }
-
-        /* GOV BOX */
-        .gov-box {
-            background: var(--white); border: 1px solid var(--border);
-            border-radius: var(--radius); overflow: hidden; box-shadow: 0 1px 6px rgba(0,0,0,0.06);
-        }
-        .gov-box-header {
-            background: var(--gov-navy); padding: 10px 18px;
-            display: flex; align-items: center; gap: 10px;
-        }
-        .gov-box-header.orange { background: var(--gov-orange); }
-        .gov-box-header.green  { background: var(--gov-green); }
-        .gov-box-header.gray   { background: #4a5568; }
-        .gov-box-header h3 { font-size: 13.5px; font-weight: 600; color: #fff; letter-spacing: 0.02em; }
-        .gov-box-header .icon { font-size: 1.1rem; }
-        .gov-box-body { padding: 20px 18px; }
-
-        /* MAPS */
-        .maps-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
-        .map-card { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; background: #f8faff; transition: box-shadow 0.2s; }
-        .map-card:hover { box-shadow: 0 4px 14px rgba(26,58,107,0.12); }
-        .map-img-wrap {
-            background: #eef2fa; padding: 12px;
-            display: flex; align-items: center; justify-content: center; height: 190px;
+        /* --- 1. OFFICIAL TOP HEADER (WHITE) --- */
+        .top-header {
+            background: #FFFFFF;
             border-bottom: 1px solid var(--border);
-        }
-        .map-img-wrap img { max-width: 100%; max-height: 100%; object-fit: contain; }
-        .map-label { padding: 8px 14px; display: flex; align-items: center; justify-content: space-between; background: #fff; }
-        .map-label .name { font-weight: 600; font-size: 13px; color: var(--gov-navy); }
-        .map-label .badge {
-            background: #e6f4ee; color: var(--gov-green); font-size: 10px; font-weight: 700;
-            padding: 3px 9px; border-radius: 3px; border: 1px solid #b2ddc8; text-transform: uppercase; letter-spacing: 0.05em;
+            z-index: 100;
+            position: relative;
+            width: 100%;
         }
 
-        /* INFO TABLE */
-        .info-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
-        .info-table tr { border-bottom: 1px solid #eef0f5; }
-        .info-table tr:last-child { border-bottom: none; }
-        .info-table td { padding: 9px 12px; }
-        .info-table td:first-child { color: var(--text-muted); font-weight: 500; width: 40%; background: #f8f9fc; }
-        .info-table td:last-child { color: var(--text); font-weight: 600; }
+        .header-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1380px; 
+            margin: 0 auto;
+            padding: 12px 40px;
+            width: 100%;
+        }
+        
+        .header-left { display: flex; align-items: center; gap: 15px; }
+        .nielit-logo { height: 50px; width: auto; object-fit: contain; }
+        
+        .header-titles { display: flex; flex-direction: column; }
+        .hindi-title { font-family: 'Noto Sans Devanagari', sans-serif; font-size: 15px; color: var(--primary); font-weight: 700; }
+        .eng-title { font-size: 13px; font-weight: 600; color: var(--text-dark); }
 
-        /* FEATURES */
-        .feature-list { list-style: none; }
-        .feature-list li { display: flex; align-items: flex-start; gap: 12px; padding: 12px 0; border-bottom: 1px solid #f0f2f7; font-size: 13px; }
-        .feature-list li:last-child { border-bottom: none; }
-        .feat-icon { width: 36px; height: 36px; flex-shrink: 0; border-radius: var(--radius); display: flex; align-items: center; justify-content: center; font-size: 1.1rem; }
-        .feat-icon.blue   { background: #ddeeff; }
-        .feat-icon.green  { background: #dff5ea; }
-        .feat-icon.orange { background: #fef0dd; }
-        .feat-text strong { display: block; font-weight: 600; color: var(--gov-navy); margin-bottom: 2px; }
-        .feat-text span { color: var(--text-muted); font-size: 12px; line-height: 1.5; }
+        .header-right { display: flex; align-items: center; gap: 15px; text-align: right; }
+        .ministry-text { display: flex; flex-direction: column; font-size: 11px; color: var(--text-muted); font-weight: 600; }
+        .ministry-text strong { font-size: 12px; color: var(--text-dark); }
+        .emblem { height: 50px; width: auto; object-fit: contain; margin-left: 5px; }
 
-        /* LOGIN FORM */
-        .login-box { position: sticky; top: 16px; }
-        .login-form-wrap { padding: 20px 18px 22px; }
-        .form-group { margin-bottom: 16px; }
-        .form-group label { display: block; font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
-        .form-group input, .form-group select {
-            width: 100%; border: 1px solid var(--border); border-radius: var(--radius);
-            padding: 9px 12px; font-family: 'Noto Sans', sans-serif; font-size: 13px;
-            color: var(--text); background: #f8f9fc; outline: none; transition: border-color 0.2s, box-shadow 0.2s; -webkit-appearance: none;
-        }
-        .form-group input:focus, .form-group select:focus {
-            border-color: var(--gov-blue); background: #fff; box-shadow: 0 0 0 3px rgba(30,95,168,0.12);
-        }
-        .role-select-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
-        .role-opt {
-            border: 1.5px solid var(--border); border-radius: var(--radius);
-            padding: 10px 8px; text-align: center; cursor: pointer; transition: all 0.15s; background: #f8f9fc;
-        }
-        .role-opt input { display: none; }
-        .role-opt .r-icon { font-size: 1.3rem; display: block; margin-bottom: 3px; }
-        .role-opt .r-label { font-size: 11.5px; font-weight: 600; color: var(--text-muted); }
-        .role-opt.active { border-color: var(--gov-blue); background: #e8f0fb; }
-        .role-opt.active .r-label { color: var(--gov-navy); }
-        .btn-signin {
-            width: 100%; background: var(--gov-navy); color: #fff; border: none;
-            border-radius: var(--radius); padding: 11px; font-family: 'Noto Sans', sans-serif;
-            font-size: 13.5px; font-weight: 600; cursor: pointer; letter-spacing: 0.03em; transition: background 0.2s;
-        }
-        .btn-signin:hover { background: var(--gov-blue); }
-        .login-links { display: flex; justify-content: space-between; margin-top: 12px; }
-        .login-links a { font-size: 11.5px; color: var(--gov-blue); text-decoration: none; }
-        .login-links a:hover { text-decoration: underline; }
-        .login-note {
-            background: #f0f5ff; border: 1px solid #c5d7f5; border-radius: var(--radius);
-            padding: 10px 14px; font-size: 11.5px; color: var(--gov-navy); margin-top: 14px; line-height: 1.6;
-        }
-        .login-note strong { display: block; margin-bottom: 3px; }
-
-        /* QUICK LINKS */
-        .quick-links-list { list-style: none; }
-        .quick-links-list li { border-bottom: 1px solid #f0f2f7; }
-        .quick-links-list li:last-child { border-bottom: none; }
-        .quick-links-list a {
-            display: flex; align-items: center; gap: 10px; padding: 10px 18px;
-            text-decoration: none; color: var(--gov-blue); font-size: 12.5px; font-weight: 500; transition: background 0.15s;
-        }
-        .quick-links-list a:hover { background: #f0f5ff; color: var(--gov-navy); }
-        .quick-links-list .arr { color: #aaa; margin-left: auto; font-size: 11px; }
-
-        /* HELPDESK */
-        .helpdesk-box { padding: 16px 18px; }
-        .helpdesk-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid #f0f2f7; font-size: 12.5px; }
-        .helpdesk-row:last-child { border-bottom: none; }
-        .helpdesk-row .hd-icon { font-size: 1.1rem; flex-shrink: 0; }
-        .helpdesk-row .hd-label { color: var(--text-muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
-        .helpdesk-row .hd-value { font-weight: 600; color: var(--text); }
-
-        /* FOOTER */
-        .site-footer { background: var(--gov-navy); color: rgba(255,255,255,0.7); margin-top: 36px; border-top: 4px solid var(--gov-orange); }
-        .footer-main {
-            max-width: 1280px; margin: 0 auto; padding: 28px 20px;
-            display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 32px;
-        }
-        .footer-about h4 { font-family: 'Noto Serif', serif; font-size: 1rem; color: #fff; margin-bottom: 10px; }
-        .footer-about p { font-size: 12px; line-height: 1.7; }
-        .footer-col h5 { font-size: 12px; font-weight: 700; color: rgba(255,255,255,0.9); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.06em; }
-        .footer-col a { display: block; color: rgba(255,255,255,0.6); text-decoration: none; font-size: 12px; margin-bottom: 6px; }
-        .footer-col a:hover { color: #fff; }
-        .footer-bottom {
-            background: rgba(0,0,0,0.2); text-align: center; padding: 12px 20px;
-            font-size: 11.5px; color: rgba(255,255,255,0.5); border-top: 1px solid rgba(255,255,255,0.08);
+        /* --- 2. OFFICIAL NAVIGATION BAR (BLUE) --- */
+        .main-nav {
+            background: var(--primary);
+            box-shadow: var(--shadow-sm);
+            z-index: 99;
+            position: relative;
+            width: 100%;
         }
 
-        /* RESPONSIVE */
-        @media (max-width: 900px) {
-            .page-body { grid-template-columns: 1fr; }
-            .login-box { position: static; }
-            .footer-main { grid-template-columns: 1fr; gap: 20px; }
+        .nav-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1380px; 
+            margin: 0 auto;
+            padding: 0 40px;
+            width: 100%;
+            flex-wrap: wrap;
         }
-        @media (max-width: 600px) {
-            .maps-row { grid-template-columns: 1fr; }
-            .header-right { display: none; }
-            .hero-stats-row { flex-wrap: wrap; }
-            .nav-inner a:not(.nav-login-btn) { font-size: 12px; padding: 10px 10px; }
+
+        .nav-home-btn {
+            color: #FFFFFF; text-decoration: none; font-weight: 700; font-size: 15px;
+            display: flex; align-items: center; gap: 8px; padding: 15px 0;
+            transition: color 0.3s;
+        }
+        .nav-home-btn:hover { color: #E0F2FE;}
+        .nav-custom-icon { height: 18px; width: auto; object-fit: contain; filter: brightness(0) invert(1); }
+
+        .mobile-menu-btn {
+            display: none;
+            background: none;
+            border: none;
+            color: #FFFFFF;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 10px 0;
+        }
+
+        .nav-links { display: flex; height: 100%; align-items: center; }
+        .nav-link {
+            color: #E0F2FE; text-decoration: none; font-weight: 600; font-size: 14px;
+            padding: 16px 20px; transition: 0.3s; display: flex; align-items: center; gap: 6px;
+        }
+        .nav-link:hover { color: #FFFFFF; background: rgba(255, 255, 255, 0.1); }
+
+        /* Dropdown specific styles */
+        .dropdown { position: relative; display: inline-block; height: 100%; }
+        .dropbtn {
+            background: transparent; color: #E0F2FE; border: none; font-family: inherit;
+            font-weight: 600; font-size: 14px; padding: 16px 20px; cursor: pointer;
+            display: flex; align-items: center; gap: 6px; transition: 0.3s; height: 100%;
+            outline: none;
+        }
+        .dropdown:hover .dropbtn { color: #FFFFFF; background: rgba(255, 255, 255, 0.1); }
+        
+        .dropdown-content {
+            display: none; position: absolute; background-color: #FFFFFF; min-width: 250px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.12); z-index: 200; top: 100%; right: 0;
+            overflow: hidden; border: 1px solid var(--border);
+            border-top: 3px solid var(--primary);
+            border-radius: 0 0 12px 12px;
+            padding: 10px 0;
+        }
+        .dropdown:hover .dropdown-content { display: block; animation: dropFade 0.2s ease forwards; }
+        
+        @keyframes dropFade { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .dropdown-content a {
+            color: var(--text-dark); padding: 12px 20px; text-decoration: none; display: flex;
+            align-items: flex-start; gap: 10px; font-size: 13.5px; font-weight: 600; transition: 0.2s;
+            border-bottom: 1px solid #F1F5F9;
+        }
+        .dropdown-content a:last-child { border-bottom: none; }
+        .dropdown-content a:hover { background-color: var(--primary-bg); color: var(--primary); padding-left: 25px;}
+        
+        .dropdown-content a i {
+            color: var(--primary-light); width: 18px; text-align: center; font-size: 15px; margin-top: 2px;
+        }
+        .dropdown-content .ac-text { flex: 1; display: flex; flex-direction: column; }
+        .dropdown-content .ac-desc { font-weight: 500; font-size: 11px; color: var(--text-muted); margin-top: 2px; line-height: 1.4; }
+
+        /* --- 3. TICKER --- */
+        .ticker-wrap {
+            background: var(--text-dark); color: white; padding: 6px 0; overflow: hidden; 
+            position: relative; z-index: 10; font-size: 12px; font-weight: 600; display: flex; align-items: center;
+        }
+        .ticker-label { background: var(--gold); color: white; padding: 2px 10px; border-radius: 4px; font-weight: 800; margin: 0 15px; position: relative; z-index: 2; white-space: nowrap; font-size: 11px; letter-spacing: 0.5px;}
+        .ticker-move { display: inline-block; white-space: nowrap; animation: ticker 35s linear infinite; }
+        @keyframes ticker { 0% { transform: translateX(100vw); } 100% { transform: translateX(-100%); } }
+
+        /* --- 4. 3D AMBIENT BACKGROUND --- */
+        .ambient-bg {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            z-index: -1; pointer-events: none;
+            background: radial-gradient(circle at 50% 0%, #E0F2FE 0%, #F8FAFC 60%);
+            perspective: 1000px;
+        }
+        .shape {
+            position: absolute; background: linear-gradient(135deg, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.2));
+            backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.9);
+            box-shadow: 0 15px 35px rgba(21, 94, 117, 0.05), inset 0 0 20px rgba(255, 255, 255, 0.5);
+            animation: float-3d 25s infinite linear;
+        }
+        .cube { width: 160px; height: 160px; border-radius: 32px; top: 20%; left: 5%; animation-duration: 30s; }
+        .ring { width: 240px; height: 240px; border-radius: 50%; border: 40px solid rgba(255,255,255,0.4); top: 50%; right: 2%; animation-duration: 35s; animation-direction: reverse; background: transparent; }
+        @keyframes float-3d { 0% { transform: translateY(0) rotateX(0deg) rotateY(0deg) rotateZ(0deg); } 50% { transform: translateY(-40px) rotateX(180deg) rotateY(90deg) rotateZ(45deg); } 100% { transform: translateY(0) rotateX(360deg) rotateY(180deg) rotateZ(90deg); } }
+
+        /* --- 5. SPLIT SCREEN LAYOUT --- */
+        .wrapper {
+            display: flex; align-items: center; justify-content: space-between;
+            max-width: 1300px; margin: 0 auto; width: 100%; padding: 40px 40px 20px 40px; gap: 40px;
+            z-index: 10;
+        }
+
+        .hero { flex: 1.2; animation: fadeRight 0.8s ease both; max-width: 600px;}
+        .hero-title { font-size: 42px; font-weight: 800; color: var(--text-dark); letter-spacing: -1px; line-height: 1.1; margin-bottom: 15px;}
+        .hero-title span { color: var(--primary); }
+        .hero-sub { font-size: 15px; color: var(--text-muted); font-weight: 500; line-height: 1.6; margin-bottom: 25px;}
+        
+        .system-badge {
+            display: inline-flex; align-items: center; gap: 8px; background: white; border: 1px solid var(--border);
+            padding: 8px 16px; border-radius: 50px; font-size: 13px; font-weight: 800;
+            color: var(--candidate); box-shadow: var(--shadow-sm); margin-bottom: 30px;
+        }
+        .live-dot { width: 8px; height: 8px; background: var(--candidate); border-radius: 50%; box-shadow: 0 0 12px var(--candidate); animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(1.2); } 100% { opacity: 1; transform: scale(1); } }
+
+        .stats-row { display: flex; gap: 15px; flex-wrap: wrap;}
+        .stat { background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(10px); padding: 15px 20px; border-radius: 16px; border: 1px solid white; flex: 1; min-width: 120px; box-shadow: var(--shadow-sm);}
+        .stat-num { font-size: 24px; font-weight: 800; color: var(--text-dark); line-height: 1;}
+        .stat-num span { color: var(--primary); }
+        .stat-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 800; letter-spacing: 0.5px; margin-top: 6px;}
+
+        /* --- 6. GLASS LOGIN CARD (Replaces Action Cards) --- */
+        .login-section { 
+            flex: 1; display: flex; flex-direction: column;
+            max-width: 450px; width: 100%; animation: fadeLeft 0.8s ease both; animation-delay: 0.2s;
+        }
+        .glass-login-card {
+            background: rgba(255, 255, 255, 0.90);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            border-radius: 24px;
+            padding: 35px 30px;
+            box-shadow: var(--shadow-md);
+            position: relative;
+            overflow: hidden;
+        }
+        .glass-login-card::before {
+            content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 6px;
+            background: linear-gradient(90deg, var(--primary), var(--primary-light));
+        }
+        .glass-login-card h2 { font-size: 24px; font-weight: 800; color: var(--text-dark); margin-bottom: 5px; text-align: center;}
+        .glass-login-card p { font-size: 13px; color: var(--text-muted); text-align: center; margin-bottom: 25px; font-weight: 500;}
+
+        .form-group { margin-bottom: 18px; }
+        .form-group label { display: block; font-size: 13px; font-weight: 700; color: var(--text-muted); margin-bottom: 8px; }
+        .form-control { 
+            width: 100%; padding: 14px 15px; border: 1px solid var(--border); border-radius: 12px; 
+            font-family: inherit; font-size: 14px; background: #F8FAFC; transition: 0.3s; 
+        }
+        .form-control:focus { outline: none; border-color: var(--primary-light); box-shadow: 0 0 0 4px var(--primary-bg); background: white; }
+        
+        .btn-submit { 
+            width: 100%; padding: 15px; background: var(--primary); color: white; border: none; 
+            border-radius: 12px; font-weight: 800; font-size: 15px; cursor: pointer; transition: 0.3s; 
+            margin-top: 10px; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.2);
+        }
+        .btn-submit:hover { background: var(--primary-light); transform: translateY(-2px); box-shadow: 0 8px 20px rgba(2, 132, 199, 0.3); }
+
+        .form-footer { text-align: center; margin-top: 20px; font-size: 13px; font-weight: 600; color: var(--text-muted); }
+        .form-footer a { color: var(--primary-light); text-decoration: none; transition: 0.2s; }
+        .form-footer a:hover { color: var(--primary); text-decoration: underline; }
+
+        /* --- 7. MAPS & PLATFORM DETAILS --- */
+        .platform-details {
+            max-width: 1300px; margin: 0 auto; width: 100%; padding: 20px 40px 60px 40px;
+            z-index: 10; position: relative; animation: fadeUp 0.8s ease both; animation-delay: 0.4s;
+        }
+        .section-title { font-size: 28px; font-weight: 800; text-align: center; margin-bottom: 30px; letter-spacing: -0.5px; }
+        
+        .maps-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 25px; margin-bottom: 50px;
+        }
+        .map-box {
+            background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(15px); border: 1px solid white;
+            padding: 15px; border-radius: 20px; box-shadow: var(--shadow-sm); transition: 0.3s;
+            text-align: center;
+        }
+        .map-box:hover { transform: translateY(-5px); box-shadow: var(--shadow-md); background: #FFFFFF; }
+        .map-box img { width: 100%; height: 260px; object-fit: contain; border-radius: 12px; background: #FAFAFA; padding: 10px; border: 1px solid var(--border);}
+        .map-box h4 { margin-top: 15px; font-size: 18px; font-weight: 800; color: var(--text-dark); }
+        .map-box p { font-size: 13px; color: var(--text-muted); font-weight: 500; margin-top: 5px; }
+
+        .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-bottom: 40px; }
+        .feature-box {
+            background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(15px); border: 1px solid white;
+            padding: 25px; border-radius: 20px; box-shadow: var(--shadow-sm); display: flex; gap: 15px;
+            transition: 0.3s;
+        }
+        .feature-box:hover { background: #FFFFFF; transform: translateY(-3px); box-shadow: var(--shadow-md); }
+        .f-icon { width: 45px; height: 45px; border-radius: 12px; background: var(--primary-bg); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+        .f-content h3 { font-size: 16px; font-weight: 800; margin-bottom: 8px; color: var(--text-dark); }
+        .f-content p { font-size: 13px; color: var(--text-muted); line-height: 1.5; font-weight: 500;}
+
+        /* --- 8. FOOTER --- */
+        .footer { 
+            display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;
+            padding: 20px 40px; background: white; border-top: 1px solid var(--border);
+            font-size: 13px; font-weight: 600; color: var(--text-muted); z-index: 10; margin-top: auto;
+        }
+        .footer-left { display: flex; flex-direction: column; gap: 4px; }
+        .credit-text { font-size: 12px; color: var(--primary-light); font-weight: 700; display: flex; align-items: center; gap: 6px; }
+        
+        .footer-links { display: flex; gap: 20px; flex-wrap: wrap;}
+        .footer-links a { color: var(--text-muted); text-decoration: none; transition: 0.2s; }
+        .footer-links a:hover { color: var(--primary); }
+
+        /* ANIMATIONS */
+        @keyframes fadeRight { from { opacity: 0; transform: translateX(-30px); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes fadeLeft { from { opacity: 0; transform: translateX(30px); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* RESPONSIVE MEDIA QUERIES */
+        @media (max-width: 1024px) {
+            .wrapper { flex-direction: column; padding: 40px 20px 20px 20px; gap: 40px;}
+            .hero { max-width: 100%; text-align: center; }
+            .hero-title { font-size: 38px; }
+            .stats-row { justify-content: center; }
+            .platform-details { padding: 20px; }
+        }
+
+        @media (max-width: 768px) {
+            .header-container { flex-direction: column; gap: 15px; text-align: center; padding: 15px 20px; }
+            .header-left, .header-right { flex-direction: column; align-items: center; justify-content: center; text-align: center;}
+            .ministry-text { text-align: center; }
+            .hindi-title { font-size: 13px; }
+            .eng-title { font-size: 12px; }
+            
+            .nav-container { padding: 10px 20px; }
+            .mobile-menu-btn { display: block; }
+            .nav-links { display: none; width: 100%; flex-direction: column; align-items: flex-start; padding-bottom: 15px; }
+            .nav-links.active { display: flex; }
+            .nav-link, .dropbtn { width: 100%; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.1); justify-content: space-between;}
+            .dropdown { width: 100%; }
+            .dropdown-content { position: static; box-shadow: none; border: none; border-radius: 8px; background: rgba(0,0,0,0.1); width: 100%; margin-top: 5px; }
+            .dropdown-content a { color: #E0F2FE; }
+            
+            .footer { flex-direction: column; gap: 15px; text-align: center; justify-content: center; }
+            .footer-left { align-items: center; }
+            .footer-links { justify-content: center; }
+        }
+
+        @media (max-width: 480px) {
+            .hero-title { font-size: 32px; }
+            .stat { min-width: 45%; padding: 10px; } 
+            .stat-num { font-size: 20px; }
+            .glass-login-card { padding: 25px 20px; }
         }
     </style>
 </head>
 <body>
-
-<!-- TOP STRIP -->
-<div class="gov-topstrip">
-    <div class="gov-topstrip-inner">
-        <div class="left">
-            <span>🇮🇳 Government of India</span>
-            <span class="topstrip-divider">|</span>
-            <a href="#">Ministry of Electronics &amp; IT</a>
-            <span class="topstrip-divider">|</span>
-            <a href="#">NIELIT Official Website</a>
-        </div>
-        <div class="right">
-            <a href="#">Skip to Main Content</a>
-            <span class="topstrip-divider">|</span>
-            <a href="#">Screen Reader</a>
-            <span class="topstrip-divider">|</span>
-            <a href="#">हिंदी</a>
-        </div>
+    
+    <div class="ambient-bg">
+        <div class="shape cube"></div>
+        <div class="shape ring"></div>
     </div>
-</div>
 
-<!-- FLAG BAR -->
-<div class="flag-bar"></div>
-
-<!-- HEADER -->
-<header class="site-header">
-    <div class="header-inner">
-        <div class="header-logo">🖥️</div>
-        <div class="header-text">
-            <div class="ministry">National Institute of Electronics &amp; Information Technology</div>
-            <h1>Training Partner Management System</h1>
-            <div class="subtitle">NIELIT Bhubaneswar — Odisha &amp; Chhattisgarh Region</div>
-        </div>
-        <div class="header-right">
-            <div class="emblem">⚖️</div>
-            <div class="tagline">सत्यमेव जयते</div>
-        </div>
-    </div>
-</header>
-
-<!-- MAIN NAV -->
-<nav class="main-nav">
-    <div class="nav-inner">
-        <a href="index.php" class="active">🏠 Home</a>
-        <a href="public/courses.php">📚 Courses</a>
-        <a href="public/notices.php">📢 Public Notices</a>
-        <a href="public/contact.php">📞 Contact Us</a>
-        <a href="tp/tp_signup.php">🏫 Register Center</a>
-        <div class="nav-spacer"></div>
-        <a href="#login-section" class="nav-login-btn">🔐 Partner Login</a>
-    </div>
-</nav>
-
-<!-- NOTICE TICKER -->
-<div class="notice-ticker">
-    <div class="ticker-inner">
-        <span class="ticker-label">📢 NOTICE</span>
-        <div class="ticker-track">
-            <div class="ticker-scroll">
-                <span>📌 New batch registration open for O Level &amp; A Level courses — <a href="#">View Details</a></span>
-                <span>📌 CBT Schedule for Jan–Mar 2025 published — <a href="#">Download PDF</a></span>
-                <span>📌 All Training Partners to update center profiles by 31st Jan 2025 — <a href="#">Click Here</a></span>
-                <span>📌 Revised fee structure effective from 1st Feb 2025 — <a href="#">Read Circular</a></span>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- BREADCRUMB -->
-<div class="breadcrumb-bar">
-    <div class="breadcrumb-inner">
-        <a href="#">Home</a>
-        <span class="sep">›</span>
-        Training Partner System
-    </div>
-</div>
-
-<!-- HERO BANNER -->
-<section class="hero-banner">
-    <div class="hero-inner">
-        <h2>Training Partner Management System<br>NIELIT Bhubaneswar</h2>
-        <p>A centralized digital platform for managing training partners, student enrollments, CBT examination scheduling, and administrative operations across Odisha and Chhattisgarh.</p>
-        <a href="tp/tp_signup.php" class="hero-btn">Register New Training Center →</a>
-        <div class="hero-stats-row">
-            <div class="hero-stat"><div class="num">2</div><div class="lbl">States</div></div>
-            <div class="hero-stat"><div class="num">50+</div><div class="lbl">Centers</div></div>
-            <div class="hero-stat"><div class="num">1000+</div><div class="lbl">Students</div></div>
-            <div class="hero-stat"><div class="num">10+</div><div class="lbl">Courses</div></div>
-        </div>
-    </div>
-</section>
-
-<!-- PAGE BODY -->
-<main class="page-body" id="login-section">
-
-    <!-- LEFT COLUMN -->
-    <div>
-        <!-- REGIONAL PRESENCE -->
-        <div class="gov-box" style="margin-bottom:22px;">
-            <div class="gov-box-header">
-                <span class="icon">🗺️</span>
-                <h3>Regional Presence — Odisha &amp; Chhattisgarh</h3>
-            </div>
-            <div class="gov-box-body">
-                <div class="maps-row">
-                    <div class="map-card">
-                        <div class="map-img-wrap">
-                            <img src="odisha_map.png" alt="Map of Odisha">
-                        </div>
-                        <div class="map-label">
-                            <span class="name">🗺️ Odisha State</span>
-                            <span class="badge">Active</span>
-                        </div>
-                    </div>
-                    <div class="map-card">
-                        <div class="map-img-wrap">
-                            <img src="chhattisgarh_map.png" alt="Map of Chhattisgarh">
-                        </div>
-                        <div class="map-label">
-                            <span class="name">🗺️ Chhattisgarh State</span>
-                            <span class="badge">Active</span>
-                        </div>
-                    </div>
+    <header class="top-header">
+        <div class="header-container">
+            <div class="header-left">
+                <img src="assets/images/RR.png" alt="NIELIT Logo" class="nielit-logo">
+                <div class="header-titles">
+                    <span class="hindi-title">राष्ट्रीय इलेक्ट्रॉनिकी एवं सूचना प्रौद्योगिकी संस्थान, भुवनेश्वर</span>
+                    <span class="eng-title">National Institute of Electronics & Information Technology, Bhubaneswar</span>
                 </div>
-                <table class="info-table">
-                    <tr><td>Nodal Centre</td><td>NIELIT Bhubaneswar, Odisha</td></tr>
-                    <tr><td>States Covered</td><td>Odisha, Chhattisgarh</td></tr>
-                    <tr><td>Courses Offered</td><td>O Level, A Level, B Level, CCC, BCC, ECC</td></tr>
-                    <tr><td>Accreditation</td><td>NIELIT HQ, New Delhi</td></tr>
-                </table>
+            </div>
+            <div class="header-right">
+                <div class="ministry-text">
+                    <strong>Ministry of Electronics & IT</strong>
+                    Government of India
+                </div>
+                <img src="assets/images/image_7c2b82.png" alt="Government of India Emblem" class="emblem">
             </div>
         </div>
+    </header>
 
-        <!-- FEATURES -->
-        <div class="gov-box">
-            <div class="gov-box-header orange">
-                <span class="icon">⚙️</span>
-                <h3>System Features &amp; Services</h3>
+    <nav class="main-nav">
+        <div class="nav-container">
+            <a href="index.php" class="nav-home-btn">
+                <img src="assets/images/image_86242d.png" alt="Home" class="nav-custom-icon" onerror="this.outerHTML='<i class=\'fas fa-home\'></i>'"> 
+                NIELIT TPS
+            </a>
+            
+            <button class="mobile-menu-btn" onclick="toggleMobileMenu()">
+                <i class="fas fa-bars"></i>
+            </button>
+            
+            <div class="nav-links" id="navLinks">
+                <a href="public/courses.php" class="nav-link">Courses</a>
+                <a href="public/notices.php" class="nav-link">Public Notices</a>
+                <a href="public/contact.php" class="nav-link">Contact Us</a>
+                <a href="tp/tp_signup.php" class="nav-link" style="color: var(--gold);"><i class="fas fa-user-plus"></i> Register Center</a>
             </div>
-            <div class="gov-box-body" style="padding-top:10px;padding-bottom:10px;">
-                <ul class="feature-list">
-                    <li>
-                        <div class="feat-icon blue">📁</div>
-                        <div class="feat-text">
-                            <strong>Bulk Student Data Upload</strong>
-                            <span>Upload student records and photographs in bulk via standardized CSV format, mapped to active NIELIT courses.</span>
-                        </div>
-                    </li>
-                    <li>
-                        <div class="feat-icon green">📢</div>
-                        <div class="feat-text">
-                            <strong>Real-Time Official Notices</strong>
-                            <span>Receive PDF circulars, syllabus updates, exam schedules, and administrative guidelines from NIELIT directly.</span>
-                        </div>
-                    </li>
-                    <li>
-                        <div class="feat-icon orange">📊</div>
-                        <div class="feat-text">
-                            <strong>CBT Examination Tracking</strong>
-                            <span>Track student test appearances, results, placement records, and campus activity reports through the dashboard.</span>
-                        </div>
-                    </li>
-                </ul>
-            </div>
+        </div>
+    </nav>
+
+    <div class="ticker-wrap">
+        <div class="ticker-label">SYSTEM ALERTS</div>
+        <div class="ticker-move">
+            &bull; Registration for new Training Partners in Odisha and Chhattisgarh is now open for the upcoming session. 
+            &nbsp;&nbsp;&nbsp;&bull; Existing partners must upload their student batch records via CSV before the deadline.
+            &nbsp;&nbsp;&nbsp;&bull; Download updated operational guidelines from the Public Notices section.
         </div>
     </div>
 
-    <!-- RIGHT COLUMN -->
-    <div>
-        <!-- LOGIN -->
-        <div class="gov-box login-box" style="margin-bottom:20px;">
-            <div class="gov-box-header">
-                <span class="icon">🔐</span>
-                <h3>Partner Portal Login</h3>
+    <main class="wrapper">
+        
+        <div class="hero">
+            <div class="system-badge">
+                <span class="live-dot"></span> TPMS Portal Online
             </div>
-            <div class="login-form-wrap">
+            
+            <h1 class="hero-title">Training Partner<br><span>Management System</span></h1>
+            <p class="hero-sub">Empowering educational centers across Odisha and Chhattisgarh with streamlined student management, bulk CBT tracking, and direct administration integration. A secure, centralized platform designed exclusively for our authorized Training Partners.</p>
+
+            <div class="stats-row">
+                <div class="stat">
+                    <div class="stat-num">50<span>+</span></div>
+                    <div class="stat-label">Active Centers</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-num">10<span>K+</span></div>
+                    <div class="stat-label">Students Tracked</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-num">2</div>
+                    <div class="stat-label">Major States</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="login-section">
+            <div class="glass-login-card">
+                <h2>Portal Access</h2>
+                <p>Secure login for active partners & administrators</p>
+                
                 <form action="login.php" method="POST">
-                    <div style="margin-bottom:14px;">
-                        <label style="display:block;font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Select Role</label>
-                        <div class="role-select-row">
-                            <label class="role-opt active">
-                                <input type="radio" name="role" value="tp" checked>
-                                <span class="r-icon">🏫</span>
-                                <span class="r-label">Training Partner</span>
-                            </label>
-                            <label class="role-opt">
-                                <input type="radio" name="role" value="admin">
-                                <span class="r-icon">⚙️</span>
-                                <span class="r-label">Administrator</span>
-                            </label>
-                        </div>
-                    </div>
                     <div class="form-group">
                         <label for="email">Email Address</label>
-                        <input type="email" id="email" name="email" placeholder="Enter registered email" required>
+                        <input type="email" class="form-control" id="email" name="email" placeholder="name@center.com" required>
                     </div>
+                    
                     <div class="form-group">
                         <label for="password">Password</label>
-                        <input type="password" id="password" name="password" placeholder="Enter password" required>
+                        <input type="password" class="form-control" id="password" name="password" placeholder="••••••••" required>
                     </div>
-                    <button type="submit" class="btn-signin">Sign In to Portal</button>
-                    <div class="login-links">
-                        <a href="#">Forgot Password?</a>
-                        <a href="tp/tp_signup.php">New Registration →</a>
+
+                    <div class="form-group">
+                        <label for="role">Select Role</label>
+                        <select class="form-control" id="role" name="role">
+                            <option value="tp">Training Partner (TP)</option>
+                            <option value="admin">System Administrator</option>
+                        </select>
+                    </div>
+                    
+                    <button type="submit" class="btn-submit">Secure Sign In <i class="fas fa-arrow-right" style="margin-left: 5px;"></i></button>
+                    
+                    <div class="form-footer">
+                        Forgot your password? <a href="#">Click here</a>
                     </div>
                 </form>
-                <div class="login-note">
-                    <strong>⚠️ Important Notice</strong>
-                    Use only your official NIELIT-registered email address. For access issues, contact the helpdesk.
+            </div>
+        </div>
+
+    </main>
+
+    <section class="platform-details">
+        
+        <h2 class="section-title">Our Regional Presence</h2>
+        <div class="maps-grid">
+            <div class="map-box">
+                <img src="uploads/images/odisha_map.png" alt="Odisha Regional Map">
+                <h4>Odisha State</h4>
+                <p>Supporting educational initiatives across all major districts.</p>
+            </div>
+            <div class="map-box">
+                <img src="uploads/images/chhattisgarh_map.png" alt="Chhattisgarh Regional Map">
+                <h4>Chhattisgarh State</h4>
+                <p>Expanding digital literacy through integrated partner centers.</p>
+            </div>
+        </div>
+
+        <h2 class="section-title">Platform Capabilities</h2>
+        <div class="features-grid">
+            <div class="feature-box">
+                <div class="f-icon"><i class="fas fa-file-csv"></i></div>
+                <div class="f-content">
+                    <h3>Bulk Data Uploads</h3>
+                    <p>Easily upload student records and images via standard CSV formatting, mapped directly to active NIELIT courses to save time.</p>
+                </div>
+            </div>
+            
+            <div class="feature-box">
+                <div class="f-icon"><i class="fas fa-bell"></i></div>
+                <div class="f-content">
+                    <h3>Real-Time Notices</h3>
+                    <p>Stay updated with instant PDF notices, syllabus modifications, and critical operational guidelines straight from the administration desk.</p>
+                </div>
+            </div>
+
+            <div class="feature-box">
+                <div class="f-icon"><i class="fas fa-chart-line"></i></div>
+                <div class="f-content">
+                    <h3>CBT Tracking & Success</h3>
+                    <p>Showcase your center's success by logging computer-based test appearances, local placements, and ongoing campus activities.</p>
                 </div>
             </div>
         </div>
 
-        <!-- QUICK LINKS -->
-        <div class="gov-box" style="margin-bottom:20px;">
-            <div class="gov-box-header green">
-                <span class="icon">🔗</span>
-                <h3>Quick Links</h3>
-            </div>
-            <ul class="quick-links-list">
-                <li><a href="public/courses.php">📚 View All Courses <span class="arr">›</span></a></li>
-                <li><a href="public/notices.php">📄 Download Notices / Circulars <span class="arr">›</span></a></li>
-                <li><a href="tp/tp_signup.php">🏫 Register Training Center <span class="arr">›</span></a></li>
-                <li><a href="public/contact.php">📞 Contact NIELIT Bhubaneswar <span class="arr">›</span></a></li>
-                <li><a href="#">🌐 NIELIT Official Website <span class="arr">›</span></a></li>
-            </ul>
-        </div>
+    </section>
 
-        <!-- HELPDESK -->
-        <div class="gov-box">
-            <div class="gov-box-header gray">
-                <span class="icon">📞</span>
-                <h3>Helpdesk &amp; Support</h3>
-            </div>
-            <div class="helpdesk-box">
-                <div class="helpdesk-row">
-                    <span class="hd-icon">📞</span>
-                    <div>
-                        <div class="hd-label">Phone</div>
-                        <div class="hd-value">0674-XXXXXXX</div>
-                    </div>
-                </div>
-                <div class="helpdesk-row">
-                    <span class="hd-icon">✉️</span>
-                    <div>
-                        <div class="hd-label">Email</div>
-                        <div class="hd-value">tps@nielit.gov.in</div>
-                    </div>
-                </div>
-                <div class="helpdesk-row">
-                    <span class="hd-icon">🕐</span>
-                    <div>
-                        <div class="hd-label">Working Hours</div>
-                        <div class="hd-value">Mon–Fri, 10:00 AM – 5:30 PM</div>
-                    </div>
-                </div>
-            </div>
+    <footer class="footer">
+        <div class="footer-left">
+            <p>&copy; <?= date('Y') ?> NIELIT Bhubaneswar. All Rights Reserved.</p>
+            <div class="credit-text"><i class="fas fa-code"></i> Designed & Developed for Regional Training Partners</div>
         </div>
-    </div>
-
-</main>
-
-<!-- FOOTER -->
-<footer class="site-footer">
-    <div class="footer-main">
-        <div class="footer-about">
-            <h4>NIELIT Bhubaneswar — TPS Portal</h4>
-            <p>The Training Partner Management System is a centralized portal developed for NIELIT Bhubaneswar to manage its network of accredited training centers across Odisha and Chhattisgarh. It supports student enrollment, CBT tracking, and administrative operations.</p>
+        <div class="footer-links">
+            <a href="#">Privacy Policy</a>
+            <a href="#">Terms of Use</a>
+            <a href="#">Helpdesk: 0674-2960354</a>
         </div>
-        <div class="footer-col">
-            <h5>Useful Links</h5>
-            <a href="#">NIELIT HQ</a>
-            <a href="#">Ministry of MeitY</a>
-            <a href="#">Digital India</a>
-            <a href="#">NIC</a>
-            <a href="#">India.gov.in</a>
-        </div>
-        <div class="footer-col">
-            <h5>Portal Links</h5>
-            <a href="public/courses.php">Courses</a>
-            <a href="public/notices.php">Notices</a>
-            <a href="tp/tp_signup.php">Register Center</a>
-            <a href="public/contact.php">Contact Us</a>
-            <a href="#">Sitemap</a>
-        </div>
-    </div>
-    <div class="footer-bottom">
-        &copy; <?= date('Y') ?> NIELIT Bhubaneswar. All Rights Reserved. | Content owned by NIELIT Bhubaneswar | Designed &amp; Developed for Regional Training Partners | Last Updated: <?= date('d M Y') ?>
-    </div>
-</footer>
+    </footer>
 
-<script>
-    document.querySelectorAll('.role-opt').forEach(opt => {
-        opt.addEventListener('click', () => {
-            document.querySelectorAll('.role-opt').forEach(o => o.classList.remove('active'));
-            opt.classList.add('active');
-        });
-    });
-</script>
-
+    <script>
+        function toggleMobileMenu() {
+            const navLinks = document.getElementById('navLinks');
+            navLinks.classList.toggle('active');
+        }
+    </script>
 </body>
 </html>
