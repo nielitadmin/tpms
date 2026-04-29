@@ -46,7 +46,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>TP Sign Up - NIELIT TPS</title>
+    <title>TP Sign Up - NIELIt TPS</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="bg-light py-5">
@@ -91,7 +91,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                             <button type="submit" class="btn btn-primary w-100">Register Center</button>
                         </form>
                         <div class="text-center mt-3">
-                            <a href="../login.php">Already registered? Login here</a>
+                            <a href="../login.php">Already registered?? Login here</a>
                         </div>
                     </div>
                 </div>
