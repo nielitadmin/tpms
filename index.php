@@ -6,58 +6,94 @@
     <title>Training Partner System - NIELIT Bhubaneswar</title>
     
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
     <style>
         body {
             display: flex;
             flex-direction: column;
             min-height: 100vh;
-            background-color: #f8f9fa;
+            background-color: #f4f7f6;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
         .navbar-brand {
             letter-spacing: 1px;
         }
         .hero-section {
-            background: linear-gradient(135deg, #0056b3 0%, #0dcaf0 100%);
+            background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
             color: white;
-            padding: 70px 0 60px;
-            box-shadow: inset 0 -5px 15px rgba(0,0,0,0.05);
+            padding: 80px 0 70px;
         }
-        .hero-section h1 {
-            text-shadow: 1px 1px 3px rgba(0,0,0,0.2);
-        }
+        
         /* Map Container Styling */
-        #region-map {
-            height: 100%;
-            min-height: 450px;
+        .map-wrapper {
+            overflow: hidden;
             border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            border: 2px solid #fff;
-            z-index: 1;
+            box-shadow: 0 6px 15px rgba(0,0,0,0.08);
+            border: 3px solid #ffffff;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            background: #fff;
         }
+        .map-wrapper:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+        }
+        .map-image {
+            width: 100%;
+            height: 250px;
+            object-fit: contain; /* Ensures the whole map is visible */
+            background-color: #fdfdfd;
+            padding: 5px;
+        }
+
         /* Login Card Styling */
         .login-card {
-            border-radius: 12px;
+            border-radius: 16px;
             border: none;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+            background: #ffffff;
         }
-        .login-card .card-header {
-            background-color: #004085;
-            border-bottom: none;
+        .login-header {
+            background: linear-gradient(135deg, #0056b3, #0dcaf0);
+            border-radius: 16px 16px 0 0 !important;
+            padding: 25px;
         }
+        .form-control, .form-select {
+            border-radius: 8px;
+            padding: 12px 15px;
+            border: 1px solid #dee2e6;
+            background-color: #f8f9fa;
+        }
+        .form-control:focus, .form-select:focus {
+            box-shadow: 0 0 0 3px rgba(13, 202, 240, 0.2);
+            border-color: #0dcaf0;
+            background-color: #ffffff;
+        }
+        
+        /* Feature Cards */
         .feature-card {
-            transition: transform 0.3s ease;
-            border-radius: 10px;
+            border-radius: 12px;
+            transition: all 0.3s ease;
         }
         .feature-card:hover {
             transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.08) !important;
+        }
+        .icon-circle {
+            width: 60px;
+            height: 60px;
+            background: #e9ecef;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 15px;
         }
     </style>
 </head>
 <body>
 
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top shadow-sm">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top shadow-sm py-3">
         <div class="container">
             <a class="navbar-brand fw-bold" href="index.php">
                 <span class="text-info">NIELIT</span> TPS
@@ -66,12 +102,12 @@
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
-                <ul class="navbar-nav align-items-center gap-2">
+                <ul class="navbar-nav align-items-center gap-3">
                     <li class="nav-item"><a class="nav-link" href="public/courses.php">Courses</a></li>
                     <li class="nav-item"><a class="nav-link" href="public/notices.php">Public Notices</a></li>
                     <li class="nav-item"><a class="nav-link" href="public/contact.php">Contact Us</a></li>
-                    <li class="nav-item ms-lg-2">
-                        <a class="btn btn-outline-info btn-sm fw-bold px-3" href="#login-section">Login</a>
+                    <li class="nav-item">
+                        <a class="btn btn-info text-white fw-bold px-4 rounded-pill shadow-sm" href="#login-section">Login</a>
                     </li>
                 </ul>
             </div>
@@ -80,51 +116,71 @@
 
     <section class="hero-section text-center">
         <div class="container">
-            <h1 class="display-4 fw-bold mb-3">Training Partner Management System</h1>
-            <p class="lead mb-4 mx-auto" style="max-width: 700px;">
+            <h1 class="display-4 fw-bolder mb-3">Training Partner Management System</h1>
+            <p class="lead mb-4 mx-auto text-light opacity-75" style="max-width: 700px;">
                 Empowering educational centers across Odisha and Chhattisgarh with streamlined student management, CBT tracking, and administration.
             </p>
-            <div class="d-flex justify-content-center gap-3 mt-2">
-                <a href="tp/tp_signup.php" class="btn btn-light btn-lg px-4 fw-bold text-primary shadow-sm">Register New Center</a>
-            </div>
+            <a href="tp/tp_signup.php" class="btn btn-light btn-lg px-5 fw-bold text-dark rounded-pill shadow">Register New Center</a>
         </div>
     </section>
 
-    <section class="container py-5 mt-2" id="login-section">
-        <div class="row g-4 align-items-stretch">
+    <section class="container py-5 mt-3" id="login-section">
+        <div class="row g-5 align-items-center">
             
-            <div class="col-lg-7 d-flex flex-column">
-                <h4 class="fw-bold mb-3 text-dark">Our Regional Centers & Coverage</h4>
-                <div id="region-map" class="flex-grow-1"></div>
+            <div class="col-lg-7">
+                <div class="mb-4">
+                    <h3 class="fw-bold text-dark mb-1">Our Regional Presence</h3>
+                    <p class="text-muted">Operating across key districts in Odisha and Chhattisgarh.</p>
+                </div>
+                
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <div class="map-wrapper">
+                            <img src="public/uploads/images/odisha_map.jpg" alt="Map of Odisha" class="map-image">
+                            <div class="bg-light text-center py-2 border-top">
+                                <span class="fw-bold text-secondary">Odisha State</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="map-wrapper">
+                            <img src="public/uploads/images/chhattisgarh_map.jpg" alt="Map of Chhattisgarh" class="map-image">
+                            <div class="bg-light text-center py-2 border-top">
+                                <span class="fw-bold text-secondary">Chhattisgarh State</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div class="col-lg-5">
-                <div class="card h-100 login-card">
-                    <div class="card-header text-white text-center py-4">
-                        <h4 class="mb-0 fw-bold">System Portal Login</h4>
-                        <small class="text-light opacity-75">Secure access for active partners</small>
+                <div class="card login-card h-100">
+                    <div class="card-header login-header text-white text-center border-0">
+                        <h4 class="mb-0 fw-bold">System Portal</h4>
+                        <small class="text-white-50">Secure access for active partners</small>
                     </div>
-                    <div class="card-body p-4 p-md-5 d-flex flex-column justify-content-center bg-white">
+                    <div class="card-body p-4 p-sm-5 bg-white rounded-bottom">
                         <form action="login.php" method="POST">
-                            <div class="mb-3">
+                            <div class="mb-4">
                                 <label for="email" class="form-label fw-semibold text-secondary">Email Address</label>
-                                <input type="email" class="form-control form-control-lg bg-light" id="email" name="email" placeholder="name@center.com" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="password" class="form-label fw-semibold text-secondary">Password</label>
-                                <input type="password" class="form-control form-control-lg bg-light" id="password" name="password" placeholder="••••••••" required>
+                                <input type="email" class="form-control form-control-lg" id="email" name="email" placeholder="name@center.com" required>
                             </div>
                             <div class="mb-4">
+                                <label for="password" class="form-label fw-semibold text-secondary">Password</label>
+                                <input type="password" class="form-control form-control-lg" id="password" name="password" placeholder="••••••••" required>
+                            </div>
+                            <div class="mb-5">
                                 <label for="role" class="form-label fw-semibold text-secondary">Select Role</label>
-                                <select class="form-select form-select-lg bg-light" id="role" name="role">
+                                <select class="form-select form-select-lg" id="role" name="role">
                                     <option value="tp">Training Partner (TP)</option>
                                     <option value="admin">Administrator</option>
                                 </select>
                             </div>
-                            <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold shadow-sm">Secure Sign In</button>
+                            <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold rounded-pill shadow-sm">Secure Sign In</button>
                             
                             <div class="text-center mt-4">
-                                <a href="#" class="text-decoration-none text-muted small">Forgot Password?</a>
+                                <a href="#" class="text-decoration-none text-muted small hover-primary">Forgot your password?</a>
                             </div>
                         </form>
                     </div>
@@ -134,32 +190,32 @@
         </div>
     </section>
 
-    <section class="container py-4 mb-5">
-        <div class="row text-center g-4">
+    <section class="container py-5 mb-4 border-top">
+        <div class="row text-center g-4 mt-2">
             <div class="col-md-4">
                 <div class="card feature-card h-100 border-0 shadow-sm p-4 bg-white">
-                    <div class="mb-3">
-                        <span class="fs-1">📁</span>
+                    <div>
+                        <div class="icon-circle text-primary">📁</div>
                     </div>
-                    <h5 class="fw-bold text-primary">Bulk Data Uploads</h5>
+                    <h5 class="fw-bold text-dark">Bulk Data Uploads</h5>
                     <p class="text-muted mb-0 small">Easily upload student records and images via CSV formatting, mapped directly to active NIELIT courses.</p>
                 </div>
             </div>
             <div class="col-md-4">
                 <div class="card feature-card h-100 border-0 shadow-sm p-4 bg-white">
-                    <div class="mb-3">
-                        <span class="fs-1">📢</span>
+                    <div>
+                        <div class="icon-circle text-success">📢</div>
                     </div>
-                    <h5 class="fw-bold text-success">Real-Time Notices</h5>
+                    <h5 class="fw-bold text-dark">Real-Time Notices</h5>
                     <p class="text-muted mb-0 small">Stay updated with instant PDF notices, syllabus updates, and operational guidelines straight from the administration.</p>
                 </div>
             </div>
             <div class="col-md-4">
                 <div class="card feature-card h-100 border-0 shadow-sm p-4 bg-white">
-                    <div class="mb-3">
-                        <span class="fs-1">📊</span>
+                    <div>
+                        <div class="icon-circle text-info">📊</div>
                     </div>
-                    <h5 class="fw-bold text-info">CBT Tracking</h5>
+                    <h5 class="fw-bold text-dark">CBT Tracking</h5>
                     <p class="text-muted mb-0 small">Showcase your center's success by logging test appearances, placements, and campus activities.</p>
                 </div>
             </div>
@@ -175,53 +231,5 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            // Initialize map centered on the border of Odisha and Chhattisgarh
-            var map = L.map('region-map').setView([20.9, 83.5], 6);
-
-            // Load OpenStreetMap tiles
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                maxZoom: 12,
-                attribution: '&copy; OpenStreetMap contributors'
-            }).addTo(map);
-
-            // Custom styling for the red dots (District Headquarters)
-            var redDotStyle = {
-                color: '#cc0000',
-                fillColor: '#ff0000',
-                fillOpacity: 0.9,
-                radius: 6,
-                weight: 1
-            };
-
-            // Array of locations (You can add all districts here by finding their lat/lng coordinates)
-            var locations = [
-                // Odisha Locations
-                { name: "Bhubaneswar (HQ)", lat: 20.2961, lng: 85.8245, state: "Odisha" },
-                { name: "Cuttack", lat: 20.4625, lng: 85.8828, state: "Odisha" },
-                { name: "Sambalpur", lat: 21.4669, lng: 83.9812, state: "Odisha" },
-                { name: "Berhampur", lat: 19.3150, lng: 84.7941, state: "Odisha" },
-                { name: "Rourkela", lat: 22.2604, lng: 84.8536, state: "Odisha" },
-                { name: "Balasore", lat: 21.4869, lng: 86.9246, state: "Odisha" },
-                { name: "Bhadrak", lat: 21.0555, lng: 86.5075, state: "Odisha" },
-                
-                // Chhattisgarh Locations
-                { name: "Raipur (HQ)", lat: 21.2514, lng: 81.6296, state: "Chhattisgarh" },
-                { name: "Bilaspur", lat: 22.0797, lng: 82.1409, state: "Chhattisgarh" },
-                { name: "Durg", lat: 21.1938, lng: 81.2849, state: "Chhattisgarh" },
-                { name: "Jagdalpur", lat: 19.0775, lng: 82.0239, state: "Chhattisgarh" },
-                { name: "Korba", lat: 22.3595, lng: 82.7501, state: "Chhattisgarh" }
-            ];
-
-            // Loop through the array and plot each red dot on the map
-            locations.forEach(function(loc) {
-                L.circleMarker([loc.lat, loc.lng], redDotStyle)
-                 .addTo(map)
-                 .bindPopup('<b>' + loc.name + '</b><br>' + loc.state);
-            });
-        });
-    </script>
 </body>
 </html>
