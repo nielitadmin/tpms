@@ -1,35 +1,23 @@
 <?php
 session_start();
-// require __DIR__ . '/../includes/config.php'; // Uncomment for DB connection
+// require __DIR__ . '/../includes/config.php'; // Uncomment when database is ready
 
 $message = '';
 $messageType = '';
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    // Basic Account Details
     $center_id = $_POST['center_id'];
-    $email = $_POST['sig_email']; // Using Signatory Email as login email
+    $email = $_POST['sig_email']; 
     $password = $_POST['password'];
     $confirm_password = $_POST['confirm_password'];
-    
-    // Yahan par aap baaki saare POST variables aur Files ko receive karenge
-    // Jaise: $sig_name = $_POST['sig_name'];
-    // Jaise: $fac_name = $_POST['fac_name']; (Yeh array hoga)
 
     if ($password !== $confirm_password) {
         $message = "Passwords do not match!";
         $messageType = "danger"; 
     } else {
-        /*
-        // --- Database Logic (Commented for testing design) ---
-        // 1. Check if email or center_id exists
-        // 2. Hash password: $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-        // 3. Move all uploaded documents using move_uploaded_file()
-        // 4. Insert data into Users table, Faculty table, and Documents table
-        
-        $message = "Registration successful! Please wait for Admin approval.";
+        // --- Database Logic will go here later ---
+        $message = "Form submitted successfully! Wait for Admin approval.";
         $messageType = "success";
-        */
     }
 }
 ?>
@@ -41,41 +29,97 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     <style>
-        body { background-color: #f4f6f9; }
-        .step-indicator {
-            width: 35px; height: 35px; border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            font-weight: bold; background-color: white; transition: all 0.3s;
-            margin: 0 auto; z-index: 2; position: relative;
+        /* Animated Tech Gradient Background */
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(-45deg, #0d324d, #19547b, #0a58ca, #00d2ff);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+            min-height: 100vh;
+            color: #333;
         }
-        .step-active { background-color: #0d6efd; color: white; border: 2px solid #0d6efd; box-shadow: 0 0 10px rgba(13, 110, 253, 0.3); }
-        .step-completed { background-color: #198754; color: white; border: 2px solid #198754; }
-        .step-inactive { background-color: #e9ecef; color: #6c757d; border: 2px solid #ced4da; }
-        .step-label { font-size: 0.75rem; margin-top: 8px; text-align: center; color: #6c757d; font-weight: 500; }
-        .active-label { color: #0d6efd; font-weight: bold; }
-        .form-step { display: none; animation: fadeIn 0.4s; }
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* 3D Texture Grid Overlay */
+        .bg-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-image: 
+                linear-gradient(rgba(255,255,255,0.07) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.07) 1px, transparent 1px);
+            background-size: 30px 30px;
+            z-index: -1;
+            animation: panGrid 20s linear infinite;
+        }
+        @keyframes panGrid {
+            0% { background-position: 0px 0px; }
+            100% { background-position: 30px 30px; }
+        }
+
+        /* 3D Glassmorphism Card */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 25px 45px rgba(0, 0, 0, 0.2), inset 0 0 0 1px rgba(255,255,255,0.2);
+            border-radius: 20px;
+            transform: translateZ(0);
+            transition: all 0.4s ease;
+        }
+        .glass-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 35px 60px rgba(0, 0, 0, 0.3), inset 0 0 0 1px rgba(255,255,255,0.3);
+        }
+
+        /* Progress Indicator Styling */
+        .step-indicator {
+            width: 40px; height: 40px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold; background-color: white; transition: all 0.4s ease;
+            margin: 0 auto; z-index: 2; position: relative;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        .step-active { background-color: #0d6efd; color: white; border: none; box-shadow: 0 0 15px rgba(13, 110, 253, 0.6); transform: scale(1.1); }
+        .step-completed { background-color: #198754; color: white; border: none; }
+        .step-inactive { background-color: #e9ecef; color: #6c757d; border: none; }
+        .step-label { font-size: 0.8rem; margin-top: 10px; text-align: center; color: #555; font-weight: 600; }
+        .active-label { color: #0d6efd; font-weight: 800; }
+        
+        .form-step { display: none; animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
         .form-step.active { display: block; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        .form-control, .form-select { border-radius: 8px; transition: all 0.3s; }
+        .form-control:focus, .form-select:focus { box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.25); border-color: #86b7fe; }
     </style>
 </head>
 <body class="py-5">
 
+<div class="bg-overlay"></div>
+
 <div class="container">
     <div class="row justify-content-center">
         <div class="col-lg-10">
-            <div class="card shadow border-0 rounded-3">
-                <div class="card-header bg-primary text-white text-center py-3">
-                    <h4 class="mb-0">NIELIT TPS - New Center Registration Form</h4>
+            <div class="glass-card">
+                <div class="bg-primary text-white text-center py-4" style="border-radius: 20px 20px 0 0;">
+                    <h3 class="mb-0 fw-bold">NIELIT TPS <i class="bi bi-shield-check"></i></h3>
+                    <p class="mb-0 text-white-50">New Training Center Registration</p>
                 </div>
                 <div class="card-body p-4 p-md-5">
                     
                     <?php if($message): ?>
-                        <div class="alert alert-<?= $messageType ?>"><?= $message ?></div>
+                        <div class="alert alert-<?= $messageType ?> rounded-3 shadow-sm"><?= $message ?></div>
                     <?php endif; ?>
 
-                    <div class="position-relative mb-5 px-2">
-                        <div class="progress" style="height: 4px; top: 16px; position: absolute; width: 90%; left: 5%; z-index: 1;">
-                            <div class="progress-bar bg-primary" id="progressBar" style="width: 0%; transition: width 0.4s;"></div>
+                    <div class="position-relative mb-5 px-2 mt-2">
+                        <div class="progress" style="height: 4px; top: 18px; position: absolute; width: 90%; left: 5%; z-index: 1; background-color: #e9ecef;">
+                            <div class="progress-bar bg-primary" id="progressBar" style="width: 0%; transition: width 0.5s ease;"></div>
                         </div>
                         <div class="d-flex justify-content-between position-relative" style="z-index: 2;">
                             <div style="width: 70px;"><div class="step-indicator step-active" id="ind-1">1</div><div class="step-label active-label" id="lbl-1">Account</div></div>
@@ -89,38 +133,33 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     <form id="signupForm" method="POST" action="" enctype="multipart/form-data">
                         
                         <div class="form-step active" id="step-0">
-                            <h5 class="border-bottom pb-2 mb-4 text-primary">Step 1: Account Setup & Signatory Details</h5>
-                            <div class="row bg-light p-3 rounded mb-4 border">
+                            <h5 class="border-bottom pb-2 mb-4 text-primary fw-bold"><i class="bi bi-person-badge"></i> Step 1: Account Setup & Signatory Details</h5>
+                            <div class="row bg-light p-3 rounded mb-4 border shadow-sm">
                                 <div class="col-md-4 mb-3"><label class="fw-bold text-secondary">Unique Center ID</label><input type="text" name="center_id" class="form-control" required placeholder="e.g. OD001"></div>
                                 <div class="col-md-4 mb-3"><label class="fw-bold text-secondary">Create Password</label><input type="password" name="password" class="form-control" required minlength="6"></div>
                                 <div class="col-md-4 mb-3"><label class="fw-bold text-secondary">Confirm Password</label><input type="password" name="confirm_password" class="form-control" required minlength="6"></div>
                             </div>
 
-                            <h6 class="text-secondary mb-3">Signatory Information (Sec 3)</h6>
+                            <h6 class="text-secondary mb-3 fw-bold">Signatory Information (Sec 3)</h6>
                             <div class="row">
                                 <div class="col-md-4 mb-3"><label class="form-label fw-bold">Name</label><input type="text" name="sig_name" class="form-control" required></div>
                                 <div class="col-md-4 mb-3"><label class="form-label fw-bold">Father's Name</label><input type="text" name="sig_fname" class="form-control" required></div>
                                 <div class="col-md-4 mb-3"><label class="form-label fw-bold">Designation</label><input type="text" name="sig_designation" class="form-control" required></div>
-                                
                                 <div class="col-md-6 mb-3"><label class="form-label fw-bold">Address 1</label><input type="text" name="sig_address1" class="form-control" required></div>
                                 <div class="col-md-6 mb-3"><label class="form-label fw-bold">Locality/District/State</label><input type="text" name="sig_locality" class="form-control" required></div>
-                                
                                 <div class="col-md-4 mb-3"><label class="form-label fw-bold">Mobile</label><input type="text" name="sig_mobile" class="form-control" required></div>
                                 <div class="col-md-4 mb-3"><label class="form-label fw-bold">Email (Used for Login)</label><input type="email" name="sig_email" class="form-control" required></div>
                                 <div class="col-md-4 mb-3"><label class="form-label fw-bold">ID Proof Num (Pan/Aadhar)</label><input type="text" name="sig_id_number" class="form-control" required></div>
-                                
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label fw-bold">Premise Type (Sec 4)</label>
-                                    <select name="premise_type" class="form-select" required>
-                                        <option value="">Select...</option><option value="Owned">Owned</option><option value="Rented">Rented (Long Term)</option>
-                                    </select>
+                                    <select name="premise_type" class="form-select" required><option value="">Select...</option><option value="Owned">Owned</option><option value="Rented">Rented</option></select>
                                 </div>
                                 <div class="col-md-6 mb-3"><label class="form-label fw-bold">Premise Valid Upto</label><input type="date" name="premise_valid_upto" class="form-control" required></div>
                             </div>
                         </div>
 
                         <div class="form-step" id="step-1">
-                            <h5 class="border-bottom pb-2 mb-4 text-primary">Step 2: Faculty Details (Sec 12 & 13)</h5>
+                            <h5 class="border-bottom pb-2 mb-4 text-primary fw-bold"><i class="bi bi-person-workspace"></i> Step 2: Faculty Details</h5>
                             <div class="row">
                                 <div class="col-md-6 mb-3"><label class="form-label fw-bold">Name of Primary Faculty</label><input type="text" name="fac_name[]" class="form-control" required></div>
                                 <div class="col-md-6 mb-3"><label class="form-label fw-bold">Qualification</label><input type="text" name="fac_qualification[]" class="form-control" required placeholder="e.g. OSCIT"></div>
@@ -131,7 +170,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         </div>
 
                         <div class="form-step" id="step-2">
-                            <h5 class="border-bottom pb-2 mb-4 text-primary">Step 3: Financial Details (Sec 14)</h5>
+                            <h5 class="border-bottom pb-2 mb-4 text-primary fw-bold"><i class="bi bi-graph-up-arrow"></i> Step 3: Financial Details</h5>
                             <div class="row">
                                 <div class="col-md-6 mb-3"><label class="form-label fw-bold">Financial Ending Year</label><input type="number" name="fin_year" class="form-control" placeholder="e.g. 2024" required></div>
                                 <div class="col-md-6 mb-3"><label class="form-label fw-bold">Turnover in Computer Training</label><input type="text" name="fin_turnover" class="form-control" required></div>
@@ -144,8 +183,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         </div>
 
                         <div class="form-step" id="step-3">
-                            <h5 class="border-bottom pb-2 mb-4 text-primary">Step 4: Upload Documents (Sec 17)</h5>
-                            <div class="alert alert-warning small">Upload PDF/JPG (Max 2MB each)</div>
+                            <h5 class="border-bottom pb-2 mb-4 text-primary fw-bold"><i class="bi bi-folder-check"></i> Step 4: Upload Documents</h5>
+                            <div class="alert alert-warning small"><i class="bi bi-exclamation-triangle"></i> Upload PDF/JPG formats only (Max 2MB each)</div>
                             <div class="row">
                                 <div class="col-md-6 mb-3"><label class="form-label small fw-bold">1. Authorized ID Proof</label><input type="file" name="doc_id_proof" class="form-control form-control-sm" required></div>
                                 <div class="col-md-6 mb-3"><label class="form-label small fw-bold">2. Signatory Signature</label><input type="file" name="doc_signature" class="form-control form-control-sm" required></div>
@@ -157,18 +196,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         </div>
 
                         <div class="form-step" id="step-4">
-                            <h5 class="border-bottom pb-2 mb-4 text-primary">Step 5: Final Declaration</h5>
+                            <h5 class="border-bottom pb-2 mb-4 text-primary fw-bold"><i class="bi bi-check2-circle"></i> Step 5: Final Declaration</h5>
                             <div class="alert alert-info">I declare that all information and uploaded documents are authentic.</div>
                             <div class="form-check mb-4">
                                 <input class="form-check-input" type="checkbox" id="agreeTerms" required>
                                 <label class="form-check-label fw-bold" for="agreeTerms">I agree to NIELIT Terms & Conditions</label>
                             </div>
-                            <button type="submit" class="btn btn-success btn-lg w-100 fw-bold shadow-sm">Submit Application for Admin Approval</button>
+                            <button type="submit" class="btn btn-success btn-lg w-100 fw-bold shadow-sm">Submit Application for Admin Approval <i class="bi bi-send ms-2"></i></button>
                         </div>
 
                         <div class="d-flex justify-content-between mt-5" id="formNavigation">
-                            <button type="button" class="btn btn-secondary px-4 fw-bold" id="prevBtn" onclick="nextPrev(-1)" style="display: none;">Previous</button>
-                            <button type="button" class="btn btn-primary px-4 fw-bold ms-auto" id="nextBtn" onclick="nextPrev(1)">Next</button>
+                            <button type="button" class="btn btn-outline-secondary px-4 fw-bold" id="prevBtn" onclick="nextPrev(-1)" style="display: none;">Previous</button>
+                            <button type="button" class="btn btn-primary px-4 fw-bold ms-auto" id="nextBtn" onclick="nextPrev(1)">Next Step <i class="bi bi-arrow-right"></i></button>
                         </div>
 
                     </form>
@@ -227,7 +266,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
             if (i < n) {
                 ind.className = "step-indicator step-completed";
-                ind.innerHTML = "✓";
+                ind.innerHTML = "<i class='bi bi-check'></i>";
             } else if (i === n) {
                 ind.className = "step-indicator step-active";
                 lbl.className = "step-label active-label";
