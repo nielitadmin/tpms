@@ -13,7 +13,6 @@ if (isset($_POST['action']) && $_POST['action'] === 'clear_draft') {
 }
 
 $errors  = [];
-
 $success = false;
 $draft   = $_SESSION['tp_draft'] ?? [];
 
