@@ -354,7 +354,7 @@ session_destroy();
     <header class="top-header">
         <div class="header-container">
             <div class="header-left">
-                <img src="assets/images/RR.png" alt="NIELIT Logo" class="nielit-logo">
+                <img src="RR.png" alt="NIELIT Logo" class="nielit-logo">
                 <div class="header-titles">
                     <span class="hindi-title">राष्ट्रीय इलेक्ट्रॉनिकी एवं सूचना प्रौद्योगिकी संस्थान, भुवनेश्वर</span>
                     <span class="eng-title">National Institute of Electronics & Information Technology, Bhubaneswar</span>
@@ -365,7 +365,7 @@ session_destroy();
                     <strong>Ministry of Electronics & IT</strong>
                     Government of India
                 </div>
-                <img src="assets/images/image_7c2b82.png" alt="Government of India Emblem" class="emblem">
+                <img src="image_7c2b82.png" alt="Government of India Emblem" class="emblem">
             </div>
         </div>
     </header>
