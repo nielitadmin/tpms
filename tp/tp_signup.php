@@ -89,18 +89,25 @@ body {
   line-height: 1.65;
   min-height: 100vh;
   overflow-x: hidden;
-  background: #020e1f;
+  background: #eef3f9;
 }
 
 /* ══════════════════════════════════════
-   3D ANIMATED BACKGROUND CANVAS
+   GOVT PORTAL BACKGROUND PATTERN
 ══════════════════════════════════════ */
-#bgCanvas {
+.page-bg {
   position: fixed;
   top: 0; left: 0;
   width: 100%; height: 100%;
   z-index: 0;
   pointer-events: none;
+  background:
+    linear-gradient(135deg, rgba(0,40,90,0.04) 25%, transparent 25%) -20px 0,
+    linear-gradient(225deg, rgba(0,40,90,0.04) 25%, transparent 25%) -20px 0,
+    linear-gradient(315deg, rgba(0,40,90,0.04) 25%, transparent 25%),
+    linear-gradient(45deg,  rgba(0,40,90,0.04) 25%, transparent 25%);
+  background-size: 40px 40px;
+  background-color: #eef3f9;
 }
 
 /* ══════════════════════════════════════
@@ -115,13 +122,13 @@ body {
    TOP GOVERNMENT BAR
 ══════════════════════════════════════ */
 .gov-topbar {
-  background: rgba(0,20,50,0.92);
-  backdrop-filter: blur(8px);
+  background: var(--navy);
+  backdrop-filter: none;
   color: #90b8e0;
   font-size: 11.5px;
   text-align: center;
   padding: 5px 16px;
-  border-bottom: 1px solid rgba(255,255,255,0.08);
+  border-bottom: 1px solid rgba(255,255,255,0.15);
 }
 .gov-topbar a { color: #6aaae0; text-decoration: none; margin: 0 6px; }
 .gov-topbar a:hover { color: #fff; }
@@ -130,10 +137,10 @@ body {
    HEADER (glass)
 ══════════════════════════════════════ */
 .header {
-  background: rgba(255,255,255,0.94);
-  backdrop-filter: blur(18px);
+  background: #ffffff;
+  backdrop-filter: none;
   border-bottom: 3px solid var(--saffron);
-  box-shadow: 0 4px 32px rgba(0,30,80,0.18);
+  box-shadow: 0 2px 12px rgba(0,30,80,0.10);
 }
 .tricolor { height: 5px; background: linear-gradient(to right, #FF9933 33.3%, #fff 33.3% 66.6%, #138808 66.6%); }
 .header-inner {
@@ -178,10 +185,10 @@ body {
    PAGE TITLE BAR (glass)
 ══════════════════════════════════════ */
 .page-title {
-  background: linear-gradient(135deg, rgba(0,30,70,0.88), rgba(0,60,140,0.82));
-  backdrop-filter: blur(14px);
+  background: linear-gradient(135deg, var(--navy), var(--navy2));
+  backdrop-filter: none;
   color: #fff; text-align: center; padding: 20px 20px 16px;
-  border-bottom: 1px solid rgba(255,255,255,0.12);
+  border-bottom: none;
 }
 .page-title .bc { font-size: 11px; color: #80b8e8; margin-bottom: 4px; }
 .page-title .bc span { color: #ffa060; }
@@ -200,13 +207,13 @@ body {
    STEP INDICATOR (glass card)
 ══════════════════════════════════════ */
 .step-indicator {
-  background: var(--glass);
-  backdrop-filter: blur(20px);
-  border: 1px solid var(--glass-border);
+  background: #ffffff;
+  backdrop-filter: none;
+  border: 1px solid #d0dde8;
   border-radius: 14px;
   padding: 18px 22px 14px;
   margin-bottom: 18px;
-  box-shadow: 0 8px 40px rgba(0,20,80,0.18);
+  box-shadow: 0 2px 12px rgba(0,20,80,0.08);
 }
 .step-bar-wrap {
   display: flex; align-items: flex-start; justify-content: space-between;
@@ -255,12 +262,12 @@ body {
    FORM CARD (glass)
 ══════════════════════════════════════ */
 .form-card {
-  background: var(--glass);
-  backdrop-filter: blur(22px);
-  border: 1px solid var(--glass-border);
+  background: #ffffff;
+  backdrop-filter: none;
+  border: 1px solid #d0dde8;
   border-radius: 14px;
   overflow: hidden;
-  box-shadow: 0 12px 60px rgba(0,20,80,0.22);
+  box-shadow: 0 2px 16px rgba(0,20,80,0.10);
 }
 .step-panel { display: none; }
 .step-panel.active { display: block; animation: panelIn .35s ease; }
@@ -307,10 +314,10 @@ body {
   font-size: 13px;
   font-family: 'DM Sans', sans-serif;
   color: var(--text);
-  background: rgba(255,255,255,0.85);
+  background: #ffffff;
   width: 100%;
   transition: all .18s;
-  box-shadow: inset 0 1px 3px rgba(0,20,60,0.06);
+  box-shadow: inset 0 1px 3px rgba(0,20,60,0.04);
 }
 .form-group input:focus,
 .form-group select:focus,
@@ -327,10 +334,10 @@ body {
   border: 2px dashed #b8cce0;
   border-radius: 8px;
   padding: 11px 13px;
-  background: rgba(240,248,255,0.7);
+  background: #f4f8fd;
   transition: all .18s;
 }
-.upload-box:hover { border-color: var(--navy2); background: rgba(225,240,255,0.85); }
+.upload-box:hover { border-color: var(--navy2); background: #e8f2ff; }
 .upload-box label { font-size: 12.5px; font-weight: 600; color: var(--navy); display: block; margin-bottom: 6px; }
 .upload-box label .req { color: var(--error); }
 .upload-box label .opt { color: var(--muted); font-weight: 400; font-size: 11px; }
@@ -344,20 +351,20 @@ body {
   padding: 6px 12px;
   border: 1.5px solid #c8d8e8; border-radius: 6px;
   cursor: pointer; font-size: 13px; font-weight: 500;
-  background: rgba(255,255,255,0.7);
+  background: #f8fbff;
   transition: all .15s;
 }
-.radio-group label:hover { border-color: var(--navy2); background: rgba(225,240,255,0.9); }
+.radio-group label:hover { border-color: var(--navy2); background: #e8f2ff; }
 .radio-group input[type=radio] { accent-color: var(--navy2); }
 
 /* Sub section */
 .sub-sec {
-  background: rgba(235,244,255,0.6);
-  border: 1px solid rgba(0,60,140,0.1);
+  background: #f4f8fd;
+  border: 1px solid #d8e8f4;
   border-radius: 8px; margin-top: 14px; overflow: hidden;
 }
 .sub-sec-head {
-  background: rgba(0,60,140,0.07);
+  background: #e4eef8;
   padding: 8px 14px; font-size: 12.5px; font-weight: 700;
   color: var(--navy); border-left: 3px solid var(--saffron);
 }
@@ -383,11 +390,10 @@ body {
 
 /* Draft banner */
 .draft-banner {
-  background: rgba(255,248,220,0.9);
+  background: #fffbea;
   border: 1px solid var(--gold); border-radius: 8px;
   padding: 10px 14px; font-size: 12.5px; color: #7a5a00;
   margin-bottom: 14px; display: flex; align-items: center; gap: 8px;
-  backdrop-filter: blur(8px);
 }
 
 /* Nav bar */
@@ -435,11 +441,11 @@ body {
 
 /* Footer */
 .site-footer {
-  background: rgba(0,20,50,0.95);
-  backdrop-filter: blur(10px);
+  background: var(--navy);
+  backdrop-filter: none;
   color: #7090b8; text-align: center; padding: 16px; font-size: 12px;
 }
-.site-footer a { color: #7090b8; }
+.site-footer a { color: #90b8d8; }
 
 @media (max-width: 640px) {
   .form-grid, .form-grid.three { grid-template-columns: 1fr; }
@@ -450,9 +456,9 @@ body {
 <body>
 
 <!-- ══════════════════════════════════════
-     3D ANIMATED BACKGROUND
+     GOVT PORTAL BACKGROUND
 ══════════════════════════════════════ -->
-<canvas id="bgCanvas"></canvas>
+<div class="page-bg"></div>
 
 <div class="page-wrapper">
 
@@ -466,11 +472,74 @@ body {
 <div class="header">
   <div class="tricolor"></div>
   <div class="header-inner">
-    <div class="logo-circle">NIELIT<br>राष्ट्रीय<br>इलेक्ट्रॉनिकी</div>
+    <div style="flex-shrink:0;width:72px;height:72px;display:flex;align-items:center;justify-content:center;">
+      <svg width="72" height="72" viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg">
+        <!-- Outer ring -->
+        <circle cx="36" cy="36" r="34" fill="#002855" stroke="#b8860b" stroke-width="2.5"/>
+        <!-- Ashoka Chakra-inspired inner ring -->
+        <circle cx="36" cy="36" r="26" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="1"/>
+        <!-- Background glow -->
+        <circle cx="36" cy="36" r="28" fill="url(#nielit_grad)"/>
+        <defs>
+          <radialGradient id="nielit_grad" cx="40%" cy="35%">
+            <stop offset="0%" stop-color="#0057b8"/>
+            <stop offset="100%" stop-color="#002855"/>
+          </radialGradient>
+        </defs>
+        <!-- Circuit board lines (tech symbol) -->
+        <g stroke="rgba(255,255,255,0.25)" stroke-width="1" fill="none">
+          <line x1="18" y1="36" x2="24" y2="36"/>
+          <line x1="48" y1="36" x2="54" y2="36"/>
+          <line x1="36" y1="18" x2="36" y2="24"/>
+          <line x1="36" y1="48" x2="36" y2="54"/>
+          <circle cx="24" cy="36" r="2" fill="rgba(255,255,255,0.3)" stroke="none"/>
+          <circle cx="48" cy="36" r="2" fill="rgba(255,255,255,0.3)" stroke="none"/>
+          <circle cx="36" cy="24" r="2" fill="rgba(255,255,255,0.3)" stroke="none"/>
+          <circle cx="36" cy="48" r="2" fill="rgba(255,255,255,0.3)" stroke="none"/>
+        </g>
+        <!-- Central N lettermark -->
+        <text x="36" y="34" text-anchor="middle" font-family="Georgia, serif" font-weight="700" font-size="15" fill="#ffffff" letter-spacing="0.5">N</text>
+        <!-- NIELIT text -->
+        <text x="36" y="46" text-anchor="middle" font-family="Arial, sans-serif" font-weight="700" font-size="7.5" fill="#ffd080" letter-spacing="1.2">NIELIT</text>
+        <!-- Gold accent ring -->
+        <circle cx="36" cy="36" r="33" fill="none" stroke="#b8860b" stroke-width="1" stroke-dasharray="4 3"/>
+      </svg>
+    </div>
     <div class="hdr-text">
       <div class="ministry">Ministry of Electronics &amp; Information Technology, Govt. of India</div>
       <h1>NIELIT — <span>National Institute of Electronics &amp; Information Technology</span></h1>
       <div class="tagline">&#x1F1EE;&#x1F1F3; An Autonomous Scientific Society under MeitY</div>
+    </div>
+    <!-- India Emblem (right) -->
+    <div style="flex-shrink:0;width:60px;height:60px;display:flex;align-items:center;justify-content:center;opacity:0.85">
+      <svg width="56" height="60" viewBox="0 0 56 60" xmlns="http://www.w3.org/2000/svg">
+        <!-- Ashoka Lion Capital simplified emblem -->
+        <ellipse cx="28" cy="48" rx="18" ry="5" fill="#ff9933" opacity="0.9"/>
+        <text x="28" y="52" text-anchor="middle" font-family="Devanagari,serif" font-size="6" fill="#002855" font-weight="bold">सत्यमेव जयते</text>
+        <!-- Dharma Chakra (wheel) -->
+        <circle cx="28" cy="30" r="12" fill="none" stroke="#002855" stroke-width="1.5"/>
+        <circle cx="28" cy="30" r="3" fill="#002855"/>
+        <!-- Spokes -->
+        <g stroke="#002855" stroke-width="0.8">
+          <line x1="28" y1="18" x2="28" y2="27"/>
+          <line x1="28" y1="33" x2="28" y2="42"/>
+          <line x1="16" y1="30" x2="25" y2="30"/>
+          <line x1="31" y1="30" x2="40" y2="30"/>
+          <line x1="19.5" y1="21.5" x2="26" y2="28"/>
+          <line x1="30" y1="32" x2="36.5" y2="38.5"/>
+          <line x1="36.5" y1="21.5" x2="30" y2="28"/>
+          <line x1="26" y1="32" x2="19.5" y2="38.5"/>
+          <line x1="17" y1="25" x2="24" y2="28.5"/>
+          <line x1="32" y1="31.5" x2="39" y2="35"/>
+          <line x1="39" y1="25" x2="32" y2="28.5"/>
+          <line x1="24" y1="31.5" x2="17" y2="35"/>
+        </g>
+        <!-- Lions (stylized) -->
+        <ellipse cx="20" cy="18" rx="5" ry="7" fill="#ff9933" opacity="0.85"/>
+        <ellipse cx="36" cy="18" rx="5" ry="7" fill="#ff9933" opacity="0.85"/>
+        <circle cx="20" cy="13" r="3.5" fill="#d97000" opacity="0.9"/>
+        <circle cx="36" cy="13" r="3.5" fill="#d97000" opacity="0.9"/>
+      </svg>
     </div>
   </div>
   <div class="tricolor"></div>
@@ -919,220 +988,7 @@ body {
 
 </div><!-- /.page-wrapper -->
 
-<!-- ══════════════════════════════════════
-     3D BACKGROUND SCRIPT (WebGL/Canvas)
-══════════════════════════════════════ -->
 <script>
-(function(){
-  var canvas = document.getElementById('bgCanvas');
-  var ctx = canvas.getContext('2d');
-  var W, H, nodes = [], lines = [], particles = [];
-  var mouse = {x: -9999, y: -9999};
-
-  function resize(){
-    W = canvas.width  = window.innerWidth;
-    H = canvas.height = window.innerHeight;
-  }
-  window.addEventListener('resize', resize);
-  window.addEventListener('mousemove', function(e){ mouse.x = e.clientX; mouse.y = e.clientY; });
-  resize();
-
-  // ─ Nodes (floating 3D-looking spheres / dots)
-  var NODE_COUNT = 55;
-  for(var i=0;i<NODE_COUNT;i++){
-    var depth = 0.2 + Math.random() * 0.8; // simulate Z
-    nodes.push({
-      x: Math.random()*W,
-      y: Math.random()*H,
-      vx: (Math.random()-0.5)*0.4,
-      vy: (Math.random()-0.5)*0.4,
-      depth: depth,
-      r: depth * 4 + 1,
-      hue: 200 + Math.random()*40,
-      alpha: depth * 0.7 + 0.1,
-      pulse: Math.random()*Math.PI*2,
-      pulseSpeed: 0.008 + Math.random()*0.012,
-    });
-  }
-
-  // ─ Floating particles (small sparkles)
-  for(var j=0;j<80;j++){
-    particles.push({
-      x: Math.random()*W,
-      y: Math.random()*H,
-      size: Math.random()*1.8 + 0.4,
-      speed: 0.2 + Math.random()*0.6,
-      alpha: Math.random()*0.5 + 0.1,
-      drift: (Math.random()-0.5)*0.3,
-    });
-  }
-
-  // ─ 3D grid lines (perspective floor)
-  var GRID_LINES = 16;
-  var gridAngle = 0;
-
-  function drawGrid(){
-    var cx = W/2, horizon = H*0.45;
-    var vanishY = horizon;
-    ctx.save();
-    ctx.strokeStyle = 'rgba(0,100,200,0.06)';
-    ctx.lineWidth = 1;
-
-    // Vertical lines (converge to vanishing point)
-    for(var i=0;i<=GRID_LINES;i++){
-      var t = i/GRID_LINES;
-      var bx = W * t;
-      ctx.beginPath();
-      ctx.moveTo(bx, H);
-      ctx.lineTo(cx + (bx - cx)*0.02, vanishY);
-      ctx.stroke();
-    }
-    // Horizontal lines (spaced by perspective)
-    for(var j=0;j<12;j++){
-      var p = Math.pow((j+1)/12, 1.8);
-      var y = vanishY + (H - vanishY) * p;
-      var spread = 1 - (y - vanishY)/(H - vanishY);
-      var lx = cx - (cx * (1-spread*0.98));
-      var rx = cx + (cx * (1-spread*0.98));
-      ctx.beginPath();
-      ctx.moveTo(lx, y);
-      ctx.lineTo(rx, y);
-      ctx.globalAlpha = 0.04 + p*0.06;
-      ctx.stroke();
-      ctx.globalAlpha = 1;
-    }
-    ctx.restore();
-  }
-
-  function drawNodes(){
-    // Draw connections
-    for(var a=0;a<nodes.length;a++){
-      for(var b=a+1;b<nodes.length;b++){
-        var na=nodes[a], nb=nodes[b];
-        var dx=na.x-nb.x, dy=na.y-nb.y;
-        var dist=Math.sqrt(dx*dx+dy*dy);
-        var maxDist = 140;
-        if(dist<maxDist){
-          var alpha = (1-dist/maxDist)*0.22*((na.depth+nb.depth)/2);
-          ctx.save();
-          ctx.globalAlpha=alpha;
-          var grad=ctx.createLinearGradient(na.x,na.y,nb.x,nb.y);
-          grad.addColorStop(0,'hsl('+na.hue+',80%,60%)');
-          grad.addColorStop(1,'hsl('+nb.hue+',80%,60%)');
-          ctx.strokeStyle=grad;
-          ctx.lineWidth=na.depth*1.2;
-          ctx.beginPath();
-          ctx.moveTo(na.x,na.y);
-          ctx.lineTo(nb.x,nb.y);
-          ctx.stroke();
-          ctx.restore();
-        }
-      }
-    }
-
-    // Draw nodes
-    for(var i=0;i<nodes.length;i++){
-      var n=nodes[i];
-      n.pulse+=n.pulseSpeed;
-      var pulseR = n.r + Math.sin(n.pulse)*1.2;
-
-      // Mouse repulsion
-      var mdx=n.x-mouse.x, mdy=n.y-mouse.y;
-      var mdist=Math.sqrt(mdx*mdx+mdy*mdy);
-      if(mdist<120){
-        n.vx += mdx/mdist*0.3;
-        n.vy += mdy/mdist*0.3;
-      }
-
-      n.x += n.vx; n.y += n.vy;
-      n.vx *= 0.99; n.vy *= 0.99;
-      if(n.x<-20) n.x=W+20;
-      if(n.x>W+20) n.x=-20;
-      if(n.y<-20) n.y=H+20;
-      if(n.y>H+20) n.y=-20;
-
-      // Glow
-      ctx.save();
-      var grd=ctx.createRadialGradient(n.x,n.y,0,n.x,n.y,pulseR*3.5);
-      grd.addColorStop(0,'hsla('+n.hue+',90%,70%,'+n.alpha+')');
-      grd.addColorStop(0.5,'hsla('+n.hue+',80%,50%,'+(n.alpha*0.3)+')');
-      grd.addColorStop(1,'hsla('+n.hue+',70%,40%,0)');
-      ctx.fillStyle=grd;
-      ctx.beginPath();
-      ctx.arc(n.x,n.y,pulseR*3.5,0,Math.PI*2);
-      ctx.fill();
-
-      // Core
-      ctx.beginPath();
-      ctx.arc(n.x,n.y,pulseR,0,Math.PI*2);
-      var core=ctx.createRadialGradient(n.x-pulseR*0.3,n.y-pulseR*0.3,0,n.x,n.y,pulseR);
-      core.addColorStop(0,'hsla('+n.hue+',100%,90%,'+(n.alpha+0.3)+')');
-      core.addColorStop(1,'hsla('+n.hue+',80%,55%,'+n.alpha+')');
-      ctx.fillStyle=core;
-      ctx.fill();
-      ctx.restore();
-    }
-  }
-
-  function drawParticles(){
-    for(var i=0;i<particles.length;i++){
-      var p=particles[i];
-      p.y -= p.speed;
-      p.x += p.drift;
-      if(p.y < -5){ p.y=H+5; p.x=Math.random()*W; }
-      ctx.save();
-      ctx.globalAlpha=p.alpha*(0.5+0.5*Math.sin(Date.now()*0.001+i));
-      ctx.fillStyle='rgba(140,200,255,1)';
-      ctx.beginPath();
-      ctx.arc(p.x,p.y,p.size,0,Math.PI*2);
-      ctx.fill();
-      ctx.restore();
-    }
-  }
-
-  // Nebula / atmosphere blobs
-  function drawAtmosphere(){
-    var blobs=[
-      {x:W*0.15,y:H*0.25,r:W*0.28,h:210,s:0.06},
-      {x:W*0.85,y:H*0.55,r:W*0.32,h:190,s:0.05},
-      {x:W*0.5, y:H*0.8, r:W*0.25,h:170,s:0.04},
-    ];
-    for(var i=0;i<blobs.length;i++){
-      var b=blobs[i];
-      var g=ctx.createRadialGradient(b.x,b.y,0,b.x,b.y,b.r);
-      g.addColorStop(0,'hsla('+b.h+',70%,25%,'+b.s+')');
-      g.addColorStop(1,'hsla('+b.h+',50%,10%,0)');
-      ctx.save();
-      ctx.fillStyle=g;
-      ctx.beginPath();
-      ctx.arc(b.x,b.y,b.r,0,Math.PI*2);
-      ctx.fill();
-      ctx.restore();
-    }
-  }
-
-  function draw(){
-    // Deep space background
-    ctx.fillStyle='#010e1e';
-    ctx.fillRect(0,0,W,H);
-
-    drawAtmosphere();
-    drawGrid();
-    drawParticles();
-    drawNodes();
-
-    // Vignette
-    var vig=ctx.createRadialGradient(W/2,H/2,H*0.3,W/2,H/2,H*0.9);
-    vig.addColorStop(0,'rgba(0,0,0,0)');
-    vig.addColorStop(1,'rgba(0,5,20,0.55)');
-    ctx.fillStyle=vig;
-    ctx.fillRect(0,0,W,H);
-
-    requestAnimationFrame(draw);
-  }
-  draw();
-})();
-
 // ── WIZARD JS ──
 var cur=1, tot=5;
 var pcts={1:10,2:30,3:50,4:70,5:90};
