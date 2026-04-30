@@ -1,1103 +1,1190 @@
 <?php
 session_start();
-require __DIR__ . '/../includes/config.php';
+require_once 'db.php';
 
-$message     = '';
-$messageType = '';
-
-/* ── File upload helper ── */
-function upload_doc($key, $dir = 'uploads/tp_docs/') {
-    if (!isset($_FILES[$key]) || $_FILES[$key]['error'] === UPLOAD_ERR_NO_FILE) return null;
-    if ($_FILES[$key]['error'] !== UPLOAD_ERR_OK)   return false;
-    if ($_FILES[$key]['size'] > 10 * 1024 * 1024)   return false; // 10 MB
-    $ext  = strtolower(pathinfo($_FILES[$key]['name'], PATHINFO_EXTENSION));
-    if (!in_array($ext, ['jpg','jpeg','png','pdf'])) return false;
-    if (!is_dir($dir)) mkdir($dir, 0755, true);
-    $name = $key . '_' . time() . '_' . uniqid() . '.' . $ext;
-    return move_uploaded_file($_FILES[$key]['tmp_name'], $dir . $name) ? $name : false;
+if (isset($_POST['action']) && $_POST['action'] === 'save_draft') {
+    $_SESSION['tp_draft'] = $_POST;
+    echo json_encode(['status' => 'ok']);
+    exit;
+}
+if (isset($_POST['action']) && $_POST['action'] === 'clear_draft') {
+    unset($_SESSION['tp_draft']);
+    exit;
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+$errors  = [];
+$success = false;
+$draft   = $_SESSION['tp_draft'] ?? [];
 
-    $center_id       = trim($_POST['center_id']       ?? '');
-    $password        = $_POST['password']              ?? '';
-    $confirm_password= $_POST['confirm_password']      ?? '';
+function handle_upload($key, $folder = 'tp_documents') {
+    if (!isset($_FILES[$key]) || $_FILES[$key]['error'] === UPLOAD_ERR_NO_FILE) return null;
+    $f = $_FILES[$key];
+    if ($f['error'] !== UPLOAD_ERR_OK) return null;
+    if (!in_array($f['type'], ['image/jpeg','image/png','application/pdf'])) return null;
+    if ($f['size'] > 5 * 1024 * 1024) return null;
+    $ext  = pathinfo($f['name'], PATHINFO_EXTENSION);
+    $name = $key . '_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+    $dir  = "uploads/$folder/";
+    if (!is_dir($dir)) mkdir($dir, 0755, true);
+    if (move_uploaded_file($f['tmp_name'], $dir . $name)) return $dir . $name;
+    return null;
+}
 
-    /* ── Password match ── */
-    if ($password !== $confirm_password) {
-        $message     = "Passwords do not match!";
-        $messageType = "danger";
-    } else {
-        /* ── Upload all documents ── */
-        $doc_fields = [
-            'doc_id_proof','doc_signature','doc_layout_map','doc_govt_reg',
-            'doc_franchisee','doc_sub_registrar','doc_sales_tax',
-            'doc_lease_noc','doc_other','doc_building_photos',
-            /* legal status docs */
-            'doc_prop','doc_prop_auth','doc_part_deed','doc_part_reg',
-            'doc_soc_cert','doc_soc_moa','doc_trust_deed','doc_trust_cert',
-            'doc_co_inc','doc_co_moa',
-            /* faculty */
-            'doc_fac1','doc_fac2',
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'final_submit') {
+    if (empty($_POST['institute_name']))   $errors[] = "Institute name is required.";
+    if (empty($_POST['email']) || !filter_var($_POST['email'], FILTER_VALIDATE_EMAIL)) $errors[] = "Valid email required.";
+    if (empty($_POST['password']) || strlen($_POST['password']) < 8) $errors[] = "Password minimum 8 characters.";
+    if ($_POST['password'] !== $_POST['confirm_password']) $errors[] = "Passwords do not match.";
+    if (empty($_POST['mobile']) || !preg_match('/^[6-9]\d{9}$/', $_POST['mobile'])) $errors[] = "Valid 10-digit mobile required.";
+    if (empty($_POST['declaration'])) $errors[] = "Please accept the declaration.";
+
+    if (empty($errors)) {
+        $upload_fields = [
+            's3_id_proof','s3_signature','s4_layout_map','s4_building_photo','s4_agreement',
+            's9_legal_doc','s9_moa_doc','s12_faculty1_cert','s12_faculty2_cert',
+            's17_id_proof','s17_signatory_sig','s17_layout_map','s17_reg_cert',
+            's17_franchise_agmt','s17_registrar_reg','s17_tax_reg','s17_lease_deed',
+            's17_other_doc','s17_building_photos'
         ];
-        $uploaded = [];
-        $upload_ok = true;
-        foreach ($doc_fields as $f) {
-            $r = upload_doc($f);
-            if ($r === false) { $upload_ok = false; break; }
-            $uploaded[$f] = $r;
-        }
-
-        if (!$upload_ok) {
-            $message     = "File upload error. Only JPG/PNG/PDF allowed, max 10MB each.";
-            $messageType = "danger";
-        } else {
-            /*
-            |-------------------------------------------------------------
-            | DATABASE INSERT — connect via $pdo / $conn from config.php
-            |-------------------------------------------------------------
-            | Example (PDO):
-            |
-            | $hashed = password_hash($password, PASSWORD_DEFAULT);
-            |
-            | $stmt = $pdo->prepare("
-            |   INSERT INTO training_partners
-            |     (center_id, password, legal_status,
-            |      sig_name, sig_mobile, sig_email,
-            |      father_name, designation, qualification, experience,
-            |      id_type, id_number,
-            |      address1, address2, locality, state, pincode, landline,
-            |      premise_type, premises_period, carpet_area, no_computers,
-            |      seating_capacity, no_boys, no_girls, has_library,
-            |      fac1_name, fac1_qual, fac1_exam, fac1_year, fac1_board,
-            |      fac1_exp_period, fac1_org, fac1_doj, fac1_id_type, fac1_id_num,
-            |      fac2_name, fac2_qual, fac2_exam, fac2_year, fac2_board,
-            |      fac2_exp_period, fac2_org, fac2_doj, fac2_id_type, fac2_id_num,
-            |      fin_year, turnover_it, turnover_other, income_tax_exempt,
-            |      students_placed, fin_remarks,
-            |      doc_id_proof, doc_signature, doc_layout_map, doc_govt_reg,
-            |      doc_franchisee, doc_sub_registrar, doc_sales_tax,
-            |      doc_lease_noc, doc_other, doc_building_photos,
-            |      doc_prop, doc_prop_auth, doc_part_deed, doc_part_reg,
-            |      doc_soc_cert, doc_soc_moa, doc_trust_deed, doc_trust_cert,
-            |      doc_co_inc, doc_co_moa, doc_fac1, doc_fac2,
-            |      status, created_at)
-            |   VALUES
-            |     (:center_id, :password, :legal_status,
-            |      :sig_name, :sig_mobile, :sig_email, ...)
-            | ");
-            | $stmt->execute([':center_id' => $center_id, ':password' => $hashed, ...]);
-            |
-            */
-
-            $message     = "Registration request sent successfully! Waiting for Admin approval.";
-            $messageType = "success";
-        }
+        $uploads = [];
+        foreach ($upload_fields as $uf) $uploads[$uf] = handle_upload($uf);
+        // TODO: INSERT into database
+        unset($_SESSION['tp_draft']);
+        $success = true;
     }
 }
+
+$v = array_merge($draft, $_POST ?? []);
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Training Partner Registration | NIELIT TPS</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<title>TP Registration | NIELIT</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&family=Noto+Serif:wght@600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet">
 <style>
-/* ── Root Variables ── */
 :root {
-    --navy:       #00308f;
-    --navy-dark:  #002070;
-    --navy-mid:   #1a4daf;
-    --gold:       #c8922a;
-    --gold-lt:    #e8a830;
-    --saffron:    #ff6600;
-    --ind-green:  #138808;
-    --bg:         #eef2f7;
-    --white:      #ffffff;
-    --border:     #c8d4e4;
-    --text:       #1a2535;
-    --muted:      #5a6a7e;
-    --light:      #f4f7fb;
-    --upload-bg:  #edf4fd;
-    --upload-bd:  #9bbedd;
-    --radius:     6px;
-    --shadow:     0 2px 10px rgba(0,48,143,0.09);
+  --navy:    #002855;
+  --navy2:   #00438a;
+  --saffron: #d95c04;
+  --gold:    #b8860b;
+  --green:   #0a7c3e;
+  --white:   #ffffff;
+  --border:  #c0cfdf;
+  --text:    #1a2533;
+  --muted:   #556070;
+  --error:   #b72b2b;
+  --success: #0a7c3e;
+  --glass:   rgba(255,255,255,0.82);
+  --glass-border: rgba(255,255,255,0.55);
 }
-*, *::before, *::after { box-sizing: border-box; }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
 body {
-    font-family: 'Noto Sans', sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    font-size: 13.5px;
-    line-height: 1.6;
-    margin: 0; padding: 0;
+  font-family: 'DM Sans', sans-serif;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.65;
+  min-height: 100vh;
+  overflow-x: hidden;
+  background: #020e1f;
 }
 
-/* ── Gov Strip ── */
-.gov-strip {
-    background: #fff;
-    border-bottom: 1px solid #dce4ef;
-    padding: 5px 0;
-    font-size: 11px;
-    color: #555;
+/* ══════════════════════════════════════
+   3D ANIMATED BACKGROUND CANVAS
+══════════════════════════════════════ */
+#bgCanvas {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  z-index: 0;
+  pointer-events: none;
 }
-.gov-strip .inner {
-    max-width: 1100px; margin: 0 auto;
-    padding: 0 18px;
-    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px;
-}
-.gov-strip a { color: var(--navy); text-decoration: none; margin-left: 14px; font-size: 11px; }
 
-/* ── Header ── */
-.site-header {
-    background: var(--white);
-    border-bottom: 4px solid var(--gold);
-    box-shadow: 0 2px 6px rgba(0,0,0,0.07);
+/* ══════════════════════════════════════
+   LAYOUT WRAPPER (above canvas)
+══════════════════════════════════════ */
+.page-wrapper {
+  position: relative;
+  z-index: 1;
 }
+
+/* ══════════════════════════════════════
+   TOP GOVERNMENT BAR
+══════════════════════════════════════ */
+.gov-topbar {
+  background: rgba(0,20,50,0.92);
+  backdrop-filter: blur(8px);
+  color: #90b8e0;
+  font-size: 11.5px;
+  text-align: center;
+  padding: 5px 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.gov-topbar a { color: #6aaae0; text-decoration: none; margin: 0 6px; }
+.gov-topbar a:hover { color: #fff; }
+
+/* ══════════════════════════════════════
+   HEADER (glass)
+══════════════════════════════════════ */
+.header {
+  background: rgba(255,255,255,0.94);
+  backdrop-filter: blur(18px);
+  border-bottom: 3px solid var(--saffron);
+  box-shadow: 0 4px 32px rgba(0,30,80,0.18);
+}
+.tricolor { height: 5px; background: linear-gradient(to right, #FF9933 33.3%, #fff 33.3% 66.6%, #138808 66.6%); }
 .header-inner {
-    max-width: 1100px; margin: 0 auto;
-    padding: 10px 18px;
-    display: flex; align-items: center; gap: 16px;
+  max-width: 1080px; margin: auto;
+  display: flex; align-items: center; gap: 16px;
+  padding: 10px 20px;
 }
-.h-emblem img { height: 68px; }
-.h-sep { width: 2px; height: 58px; background: linear-gradient(to bottom, transparent, var(--gold), transparent); flex-shrink: 0; }
-.h-text { flex: 1; }
-.h-text .hi   { font-family: 'Noto Serif', serif; font-size: 13px; color: var(--navy); font-weight: 600; }
-.h-text .name { font-family: 'Noto Serif', serif; font-size: 24px; font-weight: 700; color: var(--navy); line-height: 1.15; }
-.h-text .sub  { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
-.h-right { text-align: right; flex-shrink: 0; }
-.h-right .min { font-size: 12px; font-weight: 700; color: var(--navy); line-height: 1.5; }
-.h-right .gov { font-size: 11px; color: var(--muted); }
-
-/* Tricolour */
-.tricolour { height: 5px; display: grid; grid-template-columns: 1fr 1fr 1fr; }
-.tc1 { background: var(--saffron); }
-.tc2 { background: #f0f0f0; }
-.tc3 { background: var(--ind-green); }
-
-/* ── Nav ── */
-.main-nav { background: var(--navy-dark); }
-.nav-inner { max-width: 1100px; margin: 0 auto; padding: 0 18px; display: flex; flex-wrap: wrap; }
-.main-nav a {
-    display: inline-block; color: rgba(255,255,255,0.85);
-    text-decoration: none; font-size: 12.5px; padding: 9px 15px;
-    border-right: 1px solid rgba(255,255,255,0.09);
-    transition: background 0.2s;
+.logo-circle {
+  width: 64px; height: 64px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--navy), var(--navy2));
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 9px; font-weight: 700;
+  text-align: center; line-height: 1.3;
+  border: 3px solid var(--gold); flex-shrink: 0;
+  box-shadow: 0 4px 20px rgba(0,30,80,0.3);
 }
-.main-nav a:first-child { border-left: 1px solid rgba(255,255,255,0.09); }
-.main-nav a:hover, .main-nav a.cur { background: var(--gold); color: #fff; }
+.hdr-text { flex: 1; text-align: center; }
+.hdr-text .ministry { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; font-weight: 600; }
+.hdr-text h1 { font-family: 'Playfair Display', serif; font-size: 19px; color: var(--navy); line-height: 1.2; }
+.hdr-text h1 span { color: var(--saffron); }
+.hdr-text .tagline { font-size: 11px; color: var(--green); font-weight: 600; margin-top: 2px; }
 
-/* ── Breadcrumb ── */
-.breadcrumb-bar { background: #f0f4fa; border-bottom: 1px solid var(--border); padding: 7px 0; font-size: 12px; color: var(--muted); }
-.breadcrumb-bar .inner { max-width: 1100px; margin: 0 auto; padding: 0 18px; }
-.breadcrumb-bar a { color: var(--navy-mid); text-decoration: none; }
-.breadcrumb-bar a:hover { text-decoration: underline; }
-.breadcrumb-bar .sep { margin: 0 6px; color: #aaa; }
-
-/* ── Page Banner ── */
-.page-banner {
-    background: linear-gradient(120deg, var(--navy-dark) 0%, var(--navy) 55%, var(--navy-mid) 100%);
-    border-bottom: 4px solid var(--gold);
-    padding: 22px 0 18px;
-    position: relative; overflow: hidden;
+/* ══════════════════════════════════════
+   NAVBAR
+══════════════════════════════════════ */
+.navbar {
+  background: linear-gradient(to right, var(--navy), var(--navy2));
+  box-shadow: 0 2px 16px rgba(0,20,60,0.35);
 }
-.page-banner::before {
-    content: ''; position: absolute; right: -50px; top: -50px;
-    width: 260px; height: 260px; border-radius: 50%;
-    background: rgba(255,255,255,0.04); pointer-events: none;
+.navbar ul { max-width: 1080px; margin: auto; list-style: none; display: flex; flex-wrap: wrap; }
+.navbar ul li a {
+  display: block; padding: 10px 14px; color: #b8d4f0;
+  text-decoration: none; font-size: 12.5px; font-weight: 500;
+  border-bottom: 3px solid transparent; transition: .18s;
 }
-.page-banner .inner { max-width: 1100px; margin: 0 auto; padding: 0 18px; }
-.page-banner h1 { font-family: 'Noto Serif', serif; font-size: 21px; font-weight: 700; color: #fff; margin-bottom: 5px; }
-.page-banner p  { font-size: 13px; color: rgba(255,255,255,0.75); max-width: 620px; }
-
-/* ── Layout ── */
-.page-wrap { max-width: 1100px; margin: 24px auto 60px; padding: 0 18px; display: grid; grid-template-columns: 1fr 268px; gap: 22px; align-items: start; }
-
-/* ── Sidebar ── */
-.sidebar { position: sticky; top: 16px; }
-.s-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 14px; overflow: hidden; }
-.s-head { background: var(--navy); color: #fff; padding: 9px 14px; font-size: 12.5px; font-weight: 600; }
-.s-body { padding: 12px 14px; }
-.s-nav a { display: flex; align-items: center; gap: 7px; padding: 6px 0; border-bottom: 1px solid #eef2f7; color: var(--navy-mid); text-decoration: none; font-size: 12px; transition: color 0.2s; }
-.s-nav a:last-child { border-bottom: none; }
-.s-nav a:hover { color: var(--gold); }
-.s-nav .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--gold); flex-shrink: 0; }
-.info-box { background: #fffde7; border: 1px solid #f9a825; border-radius: var(--radius); padding: 10px 13px; font-size: 12px; color: #4e342e; line-height: 1.75; }
-.info-box strong { display: block; color: var(--navy); margin-bottom: 4px; font-size: 12.5px; }
-.hl-row { display: flex; gap: 8px; margin-bottom: 5px; font-size: 12px; }
-.hl-key { color: var(--muted); min-width: 52px; font-size: 11.5px; }
-.hl-val { color: var(--navy); font-weight: 600; font-size: 12px; }
-
-/* ── Form Card ── */
-.form-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
-.form-card-head {
-    background: var(--navy);
-    padding: 13px 22px;
-    display: flex; align-items: center; justify-content: space-between;
+.navbar ul li a:hover, .navbar ul li a.active {
+  background: rgba(255,255,255,0.1); color: #fff;
+  border-bottom-color: var(--saffron);
 }
-.form-card-head h4 { color: #fff; font-size: 15px; font-weight: 600; margin: 0; font-family: 'Noto Serif', serif; }
-.form-card-head .tps-badge { background: var(--gold); color: #fff; font-size: 11px; font-weight: 700; padding: 3px 12px; border-radius: 12px; letter-spacing: 0.3px; }
-.form-card-body { padding: 28px 28px 20px; }
 
-/* ── Step Progress ── */
-.steps-wrap { position: relative; margin-bottom: 32px; padding: 0 4px; }
-.steps-track {
-    position: absolute; top: 19px; left: 6%; right: 6%; height: 3px;
-    background: var(--border); z-index: 1; border-radius: 2px;
+/* ══════════════════════════════════════
+   PAGE TITLE BAR (glass)
+══════════════════════════════════════ */
+.page-title {
+  background: linear-gradient(135deg, rgba(0,30,70,0.88), rgba(0,60,140,0.82));
+  backdrop-filter: blur(14px);
+  color: #fff; text-align: center; padding: 20px 20px 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.12);
 }
-.steps-fill {
-    height: 100%; background: var(--navy); border-radius: 2px;
-    transition: width 0.4s ease; width: 0%;
+.page-title .bc { font-size: 11px; color: #80b8e8; margin-bottom: 4px; }
+.page-title .bc span { color: #ffa060; }
+.page-title h2 { font-family: 'Playfair Display', serif; font-size: 20px; text-shadow: 0 2px 12px rgba(0,0,0,0.4); }
+.page-title p { font-size: 12px; color: #80b8e8; margin-top: 3px; }
+
+/* ══════════════════════════════════════
+   WIZARD WRAP
+══════════════════════════════════════ */
+.wizard-wrap {
+  max-width: 840px; margin: 24px auto 48px;
+  padding: 0 14px;
 }
-.steps-row { display: flex; justify-content: space-between; position: relative; z-index: 2; }
-.step-col { display: flex; flex-direction: column; align-items: center; width: 60px; }
+
+/* ══════════════════════════════════════
+   STEP INDICATOR (glass card)
+══════════════════════════════════════ */
+.step-indicator {
+  background: var(--glass);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  padding: 18px 22px 14px;
+  margin-bottom: 18px;
+  box-shadow: 0 8px 40px rgba(0,20,80,0.18);
+}
+.step-bar-wrap {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  position: relative; margin-bottom: 12px;
+}
+.step-bar-wrap::before {
+  content: ''; position: absolute;
+  top: 16px; left: 0; right: 0; height: 3px;
+  background: rgba(0,30,80,0.12); z-index: 0;
+  border-radius: 2px;
+}
+.step-item { flex: 1; display: flex; flex-direction: column; align-items: center; position: relative; z-index: 1; }
 .step-circle {
-    width: 40px; height: 40px; border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-weight: 700; font-size: 13px;
-    background: var(--white); border: 2.5px solid var(--border);
-    color: var(--muted); transition: all 0.3s;
+  width: 34px; height: 34px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 13px;
+  border: 3px solid #b0c4dc; background: rgba(255,255,255,0.7); color: #8090a0;
+  transition: all .35s cubic-bezier(.34,1.56,.64,1);
 }
-.step-circle.done   { background: #198754; border-color: #198754; color: #fff; }
-.step-circle.active { background: var(--navy); border-color: var(--navy); color: #fff; box-shadow: 0 0 0 4px rgba(0,48,143,0.15); }
-.step-lbl { font-size: 10.5px; margin-top: 6px; color: var(--muted); font-weight: 500; text-align: center; }
-.step-lbl.active { color: var(--navy); font-weight: 700; }
+.step-circle.done {
+  background: linear-gradient(135deg, var(--green), #14a05a);
+  border-color: var(--green); color: #fff;
+  box-shadow: 0 4px 16px rgba(10,124,62,0.4);
+}
+.step-circle.active {
+  background: linear-gradient(135deg, var(--navy2), #0066cc);
+  border-color: var(--navy2); color: #fff;
+  box-shadow: 0 4px 20px rgba(0,68,138,0.45);
+  transform: scale(1.12);
+}
+.step-label { font-size: 10.5px; color: var(--muted); margin-top: 6px; text-align: center; font-weight: 500; line-height: 1.3; max-width: 86px; }
+.step-label.active { color: var(--navy2); font-weight: 700; }
+.step-label.done { color: var(--green); }
 
-/* ── Alert ── */
-.alert-govt {
-    border-left: 5px solid; border-radius: var(--radius); padding: 12px 16px; margin-bottom: 18px;
-    font-size: 13px; display: flex; gap: 10px; align-items: flex-start;
+.progress-row { display: flex; align-items: center; gap: 10px; }
+.progress-track { flex: 1; height: 9px; background: rgba(0,30,80,0.1); border-radius: 6px; overflow: hidden; }
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(to right, var(--navy2), var(--saffron));
+  border-radius: 6px; transition: width .5s cubic-bezier(.4,0,.2,1);
+  box-shadow: 0 0 12px rgba(217,92,4,0.4);
 }
-.alert-success { background: #e8f5e9; border-color: #2e7d32; color: #1b5e20; }
-.alert-danger  { background: #fdecea; border-color: #c62828; color: #b71c1c; }
-.alert-icon { font-size: 18px; line-height: 1; flex-shrink: 0; }
+.progress-pct { font-size: 12px; font-weight: 700; color: var(--navy2); min-width: 36px; text-align: right; }
 
-/* ── Form Steps ── */
-.form-step { display: none; animation: fadeIn 0.35s; }
-.form-step.active { display: block; }
-@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+/* ══════════════════════════════════════
+   FORM CARD (glass)
+══════════════════════════════════════ */
+.form-card {
+  background: var(--glass);
+  backdrop-filter: blur(22px);
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 12px 60px rgba(0,20,80,0.22);
+}
+.step-panel { display: none; }
+.step-panel.active { display: block; animation: panelIn .35s ease; }
+@keyframes panelIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
 
-.step-title {
-    font-family: 'Noto Serif', serif;
-    font-size: 15px; font-weight: 700; color: var(--navy);
-    border-bottom: 2px solid var(--gold-lt); padding-bottom: 8px; margin-bottom: 20px;
-    display: flex; align-items: center; gap: 10px;
+/* Panel header */
+.panel-header {
+  background: linear-gradient(to right, rgba(0,40,85,0.08), rgba(0,80,158,0.05));
+  border-left: 5px solid var(--navy2);
+  padding: 13px 20px; display: flex; align-items: center; gap: 12px;
+  border-bottom: 1px solid rgba(0,30,80,0.08);
 }
-.step-title .snum {
-    background: var(--gold); color: #fff; font-family: 'Noto Sans', sans-serif;
-    font-size: 11px; font-weight: 700; width: 24px; height: 24px;
-    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+.panel-num {
+  background: linear-gradient(135deg, var(--navy2), #0066cc);
+  color: #fff; width: 30px; height: 30px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700; flex-shrink: 0;
+  box-shadow: 0 3px 12px rgba(0,68,138,0.4);
 }
-.subsec { font-size: 11.5px; font-weight: 700; color: var(--navy-mid); text-transform: uppercase; letter-spacing: 0.5px; margin: 18px 0 10px; }
+.panel-title { font-size: 14px; font-weight: 700; color: var(--navy); text-transform: uppercase; letter-spacing: .5px; }
+.panel-body { padding: 20px; }
 
-/* ── Field Styling ── */
-.form-label { font-size: 12px; font-weight: 600; color: var(--navy); margin-bottom: 4px; }
-.form-label .req { color: #c0392b; }
-.form-control, .form-select {
-    border: 1px solid var(--border); border-radius: 4px;
-    padding: 7px 10px; font-size: 13px;
-    font-family: 'Noto Sans', sans-serif; background: var(--light); color: var(--text);
-    transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
-}
-.form-control:focus, .form-select:focus {
-    border-color: var(--navy); background: #fff;
-    box-shadow: 0 0 0 3px rgba(0,48,143,0.09); outline: none;
-}
-.field-note { font-size: 11px; color: var(--muted); margin-top: 3px; }
+/* ══════════════════════════════════════
+   FORM FIELDS
+══════════════════════════════════════ */
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 20px; }
+.form-grid.three { grid-template-columns: 1fr 1fr 1fr; }
+.col-full { grid-column: 1 / -1; }
 
-/* ── Upload boxes ── */
+.form-group { display: flex; flex-direction: column; gap: 4px; }
+.form-group label { font-size: 12.5px; font-weight: 600; color: var(--text); }
+.form-group label .req { color: var(--error); margin-left: 2px; }
+.form-group label .opt { color: var(--muted); font-size: 11px; font-weight: 400; }
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  border: 1.5px solid #c8d8e8;
+  border-radius: 6px;
+  padding: 8px 11px;
+  font-size: 13px;
+  font-family: 'DM Sans', sans-serif;
+  color: var(--text);
+  background: rgba(255,255,255,0.85);
+  width: 100%;
+  transition: all .18s;
+  box-shadow: inset 0 1px 3px rgba(0,20,60,0.06);
+}
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: var(--navy2);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(0,68,138,0.12), inset 0 1px 3px rgba(0,20,60,0.04);
+}
+.form-group textarea { resize: vertical; min-height: 68px; }
+
+/* Upload box */
 .upload-box {
-    border: 1.5px dashed var(--upload-bd); border-radius: 4px;
-    padding: 10px 13px; background: var(--upload-bg);
-    transition: border-color 0.2s; margin-bottom: 0;
+  border: 2px dashed #b8cce0;
+  border-radius: 8px;
+  padding: 11px 13px;
+  background: rgba(240,248,255,0.7);
+  transition: all .18s;
 }
-.upload-box:hover { border-color: var(--navy); }
-.upload-box .form-label { color: var(--navy); display: block; margin-bottom: 5px; }
-.upload-box .form-control { background: transparent; border: none; padding: 0; font-size: 12px; }
-.upload-box .form-control:focus { box-shadow: none; }
+.upload-box:hover { border-color: var(--navy2); background: rgba(225,240,255,0.85); }
+.upload-box label { font-size: 12.5px; font-weight: 600; color: var(--navy); display: block; margin-bottom: 6px; }
+.upload-box label .req { color: var(--error); }
+.upload-box label .opt { color: var(--muted); font-weight: 400; font-size: 11px; }
+.upload-box input[type=file] { width: 100%; font-size: 12px; color: var(--muted); cursor: pointer; }
 .upload-hint { font-size: 10.5px; color: var(--muted); margin-top: 3px; }
 
-/* ── Doc table (Sec 17) ── */
-.doc-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
-.doc-table th { background: #e4ecf8; color: var(--navy); padding: 8px 10px; border: 1px solid var(--border); font-weight: 700; font-size: 12px; }
-.doc-table td { padding: 9px 10px; border: 1px solid var(--border); vertical-align: middle; }
-.doc-table tr:nth-child(even) td { background: #f6f9fd; }
-.doc-table tr:hover td { background: #e8f0fb; transition: background 0.15s; }
-.sno { text-align: center; width: 36px; font-weight: 700; color: var(--navy); }
-.badge-req { background: #fde8e8; color: #b71c1c; font-size: 10.5px; font-weight: 700; padding: 2px 9px; border-radius: 10px; white-space: nowrap; }
-.badge-opt { background: #e3f2fd; color: #0277bd; font-size: 10.5px; font-weight: 700; padding: 2px 9px; border-radius: 10px; white-space: nowrap; }
-.upload-td { width: 220px; }
-.mini-hint { font-size: 10px; color: var(--muted); margin-top: 2px; }
+/* Radio group */
+.radio-group { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.radio-group label {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 12px;
+  border: 1.5px solid #c8d8e8; border-radius: 6px;
+  cursor: pointer; font-size: 13px; font-weight: 500;
+  background: rgba(255,255,255,0.7);
+  transition: all .15s;
+}
+.radio-group label:hover { border-color: var(--navy2); background: rgba(225,240,255,0.9); }
+.radio-group input[type=radio] { accent-color: var(--navy2); }
 
-/* ── Legal panels ── */
-.legal-panel { display: none; background: #f0f6ff; border: 1px solid #b6cee8; border-radius: 4px; padding: 14px 16px; margin-top: 14px; }
-.legal-panel.show { display: block; animation: fadeIn 0.3s; }
-.legal-title { font-size: 12px; font-weight: 700; color: var(--navy); margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid #c6d9ee; display: flex; align-items: center; gap: 6px; }
-.legal-title::before { content: ''; display: inline-block; width: 11px; height: 11px; background: var(--gold); border-radius: 2px; flex-shrink: 0; }
-.legal-note { font-size: 11.5px; color: var(--muted); margin-bottom: 12px; line-height: 1.7; background: #fff; border-left: 3px solid var(--gold-lt); padding: 6px 10px; border-radius: 0 4px 4px 0; }
+/* Sub section */
+.sub-sec {
+  background: rgba(235,244,255,0.6);
+  border: 1px solid rgba(0,60,140,0.1);
+  border-radius: 8px; margin-top: 14px; overflow: hidden;
+}
+.sub-sec-head {
+  background: rgba(0,60,140,0.07);
+  padding: 8px 14px; font-size: 12.5px; font-weight: 700;
+  color: var(--navy); border-left: 3px solid var(--saffron);
+}
+.sub-sec-body { padding: 14px; }
 
-/* ── Radio pills ── */
-.radio-group { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
-.radio-pill { display: flex; align-items: center; gap: 6px; padding: 7px 13px; border: 1.5px solid var(--border); border-radius: 4px; cursor: pointer; font-size: 12.5px; background: var(--light); color: var(--text); transition: all 0.2s; user-select: none; }
-.radio-pill input { accent-color: var(--navy); }
-.radio-pill:hover { border-color: var(--navy-mid); background: #e8f0fb; }
-.radio-pill.on { border-color: var(--navy); background: #ddeaf9; color: var(--navy); font-weight: 600; }
+/* Conditional blocks */
+.cond-block { display: none; }
+.cond-block.visible { display: block; animation: panelIn .3s ease; }
 
-/* ── Faculty block ── */
-.fac-block { border: 1px solid var(--border); border-radius: 4px; padding: 14px 16px; background: #f8fafd; margin-bottom: 14px; }
-.fac-block:last-child { margin-bottom: 0; }
-.fac-title { font-size: 12px; font-weight: 700; color: var(--navy-mid); margin-bottom: 12px; padding-bottom: 7px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
-.fac-badge { background: var(--navy); color: #fff; font-size: 10px; font-weight: 700; padding: 2px 9px; border-radius: 10px; }
+/* Document table */
+.doc-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.doc-table thead tr { background: linear-gradient(to right, var(--navy), var(--navy2)); color: #fff; }
+.doc-table thead th { padding: 10px 12px; text-align: left; font-weight: 600; font-size: 12.5px; }
+.doc-table tbody tr:nth-child(even) { background: rgba(230,240,255,0.5); }
+.doc-table tbody tr { border-bottom: 1px solid rgba(0,40,100,0.08); }
+.doc-table tbody td { padding: 9px 12px; vertical-align: middle; }
 
-/* ── Nav buttons ── */
-.nav-btns { display: flex; justify-content: space-between; align-items: center; margin-top: 28px; padding-top: 18px; border-top: 1px solid var(--border); }
-.btn-govt-prev { background: transparent; color: var(--muted); border: 1px solid var(--border); padding: 9px 22px; font-size: 13px; font-family: 'Noto Sans', sans-serif; border-radius: 4px; cursor: pointer; transition: background 0.2s; }
-.btn-govt-prev:hover { background: var(--bg); }
-.btn-govt-next { background: var(--navy); color: #fff; border: none; padding: 10px 28px; font-size: 13.5px; font-weight: 700; font-family: 'Noto Sans', sans-serif; border-radius: 4px; cursor: pointer; transition: background 0.2s; display: flex; align-items: center; gap: 6px; }
-.btn-govt-next:hover { background: var(--navy-mid); }
-.btn-submit { background: #198754; color: #fff; border: none; padding: 11px 36px; font-size: 14px; font-weight: 700; font-family: 'Noto Sans', sans-serif; border-radius: 4px; cursor: pointer; transition: background 0.2s; width: 100%; margin-top: 10px; letter-spacing: 0.3px; }
-.btn-submit:hover { background: #145c38; }
+/* Alerts */
+.alert { padding: 12px 16px; border-radius: 8px; margin-bottom: 14px; font-size: 13px; }
+.alert-error { background: rgba(183,43,43,0.08); border-left: 4px solid var(--error); color: var(--error); }
+.alert-success { background: rgba(10,124,62,0.08); border-left: 4px solid var(--success); color: var(--success); font-size: 14px; }
+.alert ul { padding-left: 16px; margin-top: 4px; }
 
-/* ── Review box ── */
-.review-box { background: #f8fafd; border: 1px solid var(--border); border-radius: 4px; padding: 16px 18px; margin-bottom: 16px; }
-.review-box h6 { font-size: 12px; font-weight: 700; color: var(--navy); text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 10px; border-bottom: 1px solid var(--border); padding-bottom: 5px; }
-.review-row { display: flex; gap: 10px; font-size: 12.5px; margin-bottom: 5px; }
-.review-key { color: var(--muted); min-width: 120px; font-size: 12px; }
-.review-val { color: var(--text); font-weight: 500; }
+/* Draft banner */
+.draft-banner {
+  background: rgba(255,248,220,0.9);
+  border: 1px solid var(--gold); border-radius: 8px;
+  padding: 10px 14px; font-size: 12.5px; color: #7a5a00;
+  margin-bottom: 14px; display: flex; align-items: center; gap: 8px;
+  backdrop-filter: blur(8px);
+}
 
-/* ── Footer ── */
-.site-footer { background: var(--navy-dark); color: rgba(255,255,255,0.65); text-align: center; padding: 16px 20px; font-size: 11.5px; border-top: 4px solid var(--gold); line-height: 1.9; }
-.site-footer a { color: var(--gold-lt); text-decoration: none; }
+/* Nav bar */
+.nav-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 20px;
+  background: rgba(0,30,80,0.04);
+  border-top: 1px solid rgba(0,30,80,0.08);
+  flex-wrap: wrap; gap: 10px;
+}
+.btn {
+  padding: 9px 22px; font-size: 13px; font-weight: 700;
+  font-family: 'DM Sans', sans-serif; border-radius: 6px;
+  cursor: pointer; border: none; transition: all .2s;
+  text-transform: uppercase; letter-spacing: .5px;
+}
+.btn-prev { background: rgba(255,255,255,0.8); color: var(--muted); border: 1.5px solid #c8d8e8; }
+.btn-prev:hover { background: #e8f0f8; color: var(--navy); }
+.btn-next {
+  background: linear-gradient(135deg, var(--navy2), #0066cc);
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(0,68,138,0.35);
+}
+.btn-next:hover { background: linear-gradient(135deg, var(--navy), var(--navy2)); box-shadow: 0 6px 24px rgba(0,68,138,0.45); transform: translateY(-1px); }
+.btn-draft {
+  background: rgba(255,248,220,0.9); color: #7a5a00;
+  border: 1.5px solid var(--gold); font-size: 12px; padding: 8px 15px;
+}
+.btn-draft:hover { background: #fff3c0; }
+.btn-submit {
+  background: linear-gradient(135deg, var(--green), #14a05a);
+  color: #fff; padding: 10px 28px; font-size: 14px;
+  box-shadow: 0 4px 18px rgba(10,124,62,0.4);
+}
+.btn-submit:hover { transform: translateY(-1px); box-shadow: 0 6px 28px rgba(10,124,62,0.5); }
+.draft-saved-msg { font-size: 12px; color: var(--success); font-weight: 600; display: none; }
 
-/* ── Responsive ── */
-@media (max-width: 860px) { .page-wrap { grid-template-columns: 1fr; } .sidebar { position: static; } }
-@media (max-width: 600px) { .form-card-body { padding: 18px 14px; } .steps-row .step-lbl { display: none; } }
+/* Declaration */
+.decl-box {
+  background: rgba(255,248,220,0.85); border: 2px solid var(--gold);
+  border-radius: 8px; padding: 14px; margin-top: 18px;
+}
+.decl-box label { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; font-size: 13px; }
+.decl-box input[type=checkbox] { margin-top: 3px; accent-color: var(--navy2); flex-shrink: 0; width: 16px; height: 16px; }
+
+/* Footer */
+.site-footer {
+  background: rgba(0,20,50,0.95);
+  backdrop-filter: blur(10px);
+  color: #7090b8; text-align: center; padding: 16px; font-size: 12px;
+}
+.site-footer a { color: #7090b8; }
+
+@media (max-width: 640px) {
+  .form-grid, .form-grid.three { grid-template-columns: 1fr; }
+  .step-label { display: none; }
+}
 </style>
 </head>
 <body>
 
-<!-- ── GOV STRIP ── -->
-<div class="gov-strip">
-    <div class="inner">
-        <span>&#127470;&#127475; &nbsp;Government of India &nbsp;&mdash;&nbsp; Ministry of Electronics &amp; Information Technology</span>
-        <span>
-            <a href="#">Skip to Content</a>
-            <a href="#" onclick="document.body.style.fontSize='16px';return false;">A+</a>
-            <a href="#" onclick="document.body.style.fontSize='13.5px';return false;">A</a>
-        </span>
-    </div>
+<!-- ══════════════════════════════════════
+     3D ANIMATED BACKGROUND
+══════════════════════════════════════ -->
+<canvas id="bgCanvas"></canvas>
+
+<div class="page-wrapper">
+
+<!-- Gov Topbar -->
+<div class="gov-topbar">
+  Government of India &nbsp;|&nbsp;
+  <a href="#">MeitY</a> | <a href="#">NIELIT HQ</a> | <a href="#">Grievance</a> | <a href="#">RTI</a> | <a href="#">Screen Reader Access</a>
 </div>
 
-<!-- ── HEADER ── -->
-<header class="site-header">
-    <div class="header-inner">
-        <div class="h-emblem">
-            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/55/Emblem_of_India.svg/68px-Emblem_of_India.svg.png"
-                 alt="Emblem of India"
-                 onerror="this.style.display='none'">
-        </div>
-        <div class="h-sep"></div>
-        <div class="h-text">
-            <div class="hi">राष्ट्रीय इलेक्ट्रॉनिकी एवं सूचना प्रौद्योगिकी संस्थान</div>
-            <div class="name">NIELIT TPS</div>
-            <div class="sub">National Institute of Electronics &amp; Information Technology — Training Partner System</div>
-        </div>
-        <div class="h-right">
-            <div class="min">Ministry of Electronics &amp;<br>Information Technology</div>
-            <div class="gov">Government of India</div>
-        </div>
+<!-- Header -->
+<div class="header">
+  <div class="tricolor"></div>
+  <div class="header-inner">
+    <div class="logo-circle">NIELIT<br>राष्ट्रीय<br>इलेक्ट्रॉनिकी</div>
+    <div class="hdr-text">
+      <div class="ministry">Ministry of Electronics &amp; Information Technology, Govt. of India</div>
+      <h1>NIELIT — <span>National Institute of Electronics &amp; Information Technology</span></h1>
+      <div class="tagline">&#x1F1EE;&#x1F1F3; An Autonomous Scientific Society under MeitY</div>
     </div>
-    <div class="tricolour"><div class="tc1"></div><div class="tc2"></div><div class="tc3"></div></div>
-</header>
+  </div>
+  <div class="tricolor"></div>
+</div>
 
-<!-- ── NAV ── -->
-<nav class="main-nav">
-    <div class="nav-inner">
-        <a href="#">Home</a>
-        <a href="#">About NIELIT</a>
-        <a href="#">Courses</a>
-        <a href="#" class="cur">Training Partner</a>
-        <a href="#">Student Corner</a>
-        <a href="#">Downloads</a>
-        <a href="#">Contact Us</a>
-        <a href="../login.php" style="margin-left:auto;border-left:1px solid rgba(255,255,255,0.1);">&#128274; Login</a>
-    </div>
+<!-- Navbar -->
+<nav class="navbar">
+  <ul>
+    <li><a href="#">Home</a></li>
+    <li><a href="#">About NIELIT</a></li>
+    <li><a href="#">Courses</a></li>
+    <li><a href="#" class="active">Training Partner</a></li>
+    <li><a href="#">Examination</a></li>
+    <li><a href="#">Certification</a></li>
+    <li><a href="#">Downloads</a></li>
+    <li><a href="#">Contact Us</a></li>
+  </ul>
 </nav>
 
-<!-- ── BREADCRUMB ── -->
-<div class="breadcrumb-bar">
-    <div class="inner">
-        <a href="#">Home</a><span class="sep">&#9658;</span>
-        <a href="#">Training Partner</a><span class="sep">&#9658;</span>
-        <span>New Registration</span>
-    </div>
+<!-- Page Title -->
+<div class="page-title">
+  <div class="bc">Home &raquo; Training Partner &raquo; <span>New Registration</span></div>
+  <h2>Training Partner (TP) — Online Registration</h2>
+  <p>Complete all 5 steps &bull; Save as Draft anytime &bull; Resume later</p>
 </div>
 
-<!-- ── PAGE BANNER ── -->
-<div class="page-banner">
-    <div class="inner">
-        <h1>Training Partner (TP) &mdash; New Registration</h1>
-        <p>Apply online to become an authorised NIELIT Training Partner. Fill all details carefully and upload supporting documents.</p>
-    </div>
+<!-- ══════════════════════════════════════
+     WIZARD
+══════════════════════════════════════ -->
+<div class="wizard-wrap">
+
+<?php if ($success): ?>
+<div class="alert alert-success" style="padding:22px;border-radius:10px;">
+  <strong>&#10003; Application Submitted Successfully!</strong><br><br>
+  Your TP registration has been received by NIELIT. A confirmation will be sent to your registered email.
+  <br><br><a href="tp_login.php" style="color:var(--success);font-weight:700;">&#8594; Login to your account</a>
 </div>
 
-<!-- ── PAGE WRAP ── -->
-<div class="page-wrap">
+<?php else: ?>
 
-    <!-- ════ FORM COLUMN ════ -->
-    <div>
+<?php if (!empty($draft)): ?>
+<div class="draft-banner">
+  &#128190; Your saved draft has been restored. Continue from where you left off.
+  <button onclick="clearDraft()" style="margin-left:auto;background:none;border:none;color:#b07700;cursor:pointer;font-size:12px;font-weight:700;">&#10005; Clear Draft</button>
+</div>
+<?php endif; ?>
 
-        <?php if ($message): ?>
-        <div class="alert-govt alert-<?= $messageType ?>">
-            <span class="alert-icon"><?= $messageType === 'success' ? '&#10004;' : '&#9888;' ?></span>
-            <div><?= $message ?></div>
+<?php if (!empty($errors)): ?>
+<div class="alert alert-error">
+  <strong>&#9888; Please correct the following:</strong>
+  <ul><?php foreach($errors as $e) echo "<li>".htmlspecialchars($e)."</li>"; ?></ul>
+</div>
+<?php endif; ?>
+
+<!-- Step Indicator -->
+<div class="step-indicator">
+  <div class="step-bar-wrap">
+    <div class="step-item"><div class="step-circle active" id="sc1">1</div><div class="step-label active" id="sl1">Institute<br>Details</div></div>
+    <div class="step-item"><div class="step-circle" id="sc2">2</div><div class="step-label" id="sl2">Signatory &amp;<br>Premises</div></div>
+    <div class="step-item"><div class="step-circle" id="sc3">3</div><div class="step-label" id="sl3">Legal<br>Status</div></div>
+    <div class="step-item"><div class="step-circle" id="sc4">4</div><div class="step-label" id="sl4">Faculty &amp;<br>Financial</div></div>
+    <div class="step-item"><div class="step-circle" id="sc5">5</div><div class="step-label" id="sl5">Documents<br>&amp; Submit</div></div>
+  </div>
+  <div class="progress-row">
+    <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:10%"></div></div>
+    <div class="progress-pct" id="progressPct">10%</div>
+  </div>
+</div>
+
+<!-- FORM CARD -->
+<div class="form-card">
+<form method="POST" enctype="multipart/form-data" id="tpForm" novalidate>
+<input type="hidden" name="action" id="formAction" value="final_submit">
+
+<!-- ══ STEP 1: Institute Details ══ -->
+<div class="step-panel active" id="panel1">
+  <div class="panel-header"><div class="panel-num">1</div><div class="panel-title">Institute / Organization Details</div></div>
+  <div class="panel-body">
+    <div class="form-grid">
+      <div class="form-group col-full">
+        <label>Full Name of Institute / Organization <span class="req">*</span></label>
+        <input type="text" name="institute_name" value="<?= htmlspecialchars($v['institute_name'] ?? '') ?>" placeholder="As per registration certificate">
+      </div>
+      <div class="form-group">
+        <label>Official Email <span class="req">*</span></label>
+        <input type="email" name="email" value="<?= htmlspecialchars($v['email'] ?? '') ?>" placeholder="office@institute.in">
+      </div>
+      <div class="form-group">
+        <label>Mobile Number <span class="req">*</span></label>
+        <input type="tel" name="mobile" value="<?= htmlspecialchars($v['mobile'] ?? '') ?>" placeholder="10-digit mobile">
+      </div>
+      <div class="form-group">
+        <label>Landline / STD</label>
+        <input type="tel" name="landline" value="<?= htmlspecialchars($v['landline'] ?? '') ?>" placeholder="0XXX-XXXXXXX">
+      </div>
+      <div class="form-group">
+        <label>Website</label>
+        <input type="text" name="website" value="<?= htmlspecialchars($v['website'] ?? '') ?>" placeholder="https://www.institute.in">
+      </div>
+      <div class="form-group col-full">
+        <label>Full Address of Institute <span class="req">*</span></label>
+        <textarea name="institute_address" rows="2" placeholder="Full address with PIN code"><?= htmlspecialchars($v['institute_address'] ?? '') ?></textarea>
+      </div>
+      <div class="form-group">
+        <label>State <span class="req">*</span></label>
+        <select name="state">
+          <option value="">-- Select State --</option>
+          <?php foreach(['Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Delhi','Goa','Gujarat','Haryana','Himachal Pradesh','Jharkhand','Karnataka','Kerala','Madhya Pradesh','Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland','Odisha','Punjab','Rajasthan','Sikkim','Tamil Nadu','Telangana','Tripura','Uttar Pradesh','Uttarakhand','West Bengal'] as $s): ?>
+          <option <?= ($v['state'] ?? '')==$s?'selected':'' ?>><?= $s ?></option>
+          <?php endforeach; ?>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>District <span class="req">*</span></label>
+        <input type="text" name="district" value="<?= htmlspecialchars($v['district'] ?? '') ?>">
+      </div>
+      <div class="form-group">
+        <label>PIN Code <span class="req">*</span></label>
+        <input type="text" name="pincode" value="<?= htmlspecialchars($v['pincode'] ?? '') ?>" maxlength="6" placeholder="6-digit">
+      </div>
+      <div class="form-group">
+        <label>Year of Establishment</label>
+        <input type="number" name="est_year" value="<?= htmlspecialchars($v['est_year'] ?? '') ?>" min="1950" max="2026">
+      </div>
+      <div class="form-group">
+        <label>Create Password <span class="req">*</span></label>
+        <input type="password" name="password" placeholder="Minimum 8 characters">
+      </div>
+      <div class="form-group">
+        <label>Confirm Password <span class="req">*</span></label>
+        <input type="password" name="confirm_password" placeholder="Re-enter password">
+      </div>
+    </div>
+  </div>
+  <div class="nav-bar">
+    <div></div>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span class="draft-saved-msg" id="dm1">&#10003; Draft Saved!</span>
+      <button type="button" class="btn btn-draft" onclick="saveDraft(1)">&#128190; Save Draft</button>
+      <button type="button" class="btn btn-next" onclick="goNext(1)">Next &#8594;</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ STEP 2: Signatory + Premises ══ -->
+<div class="step-panel" id="panel2">
+  <div class="panel-header"><div class="panel-num">2</div><div class="panel-title">Authorized Signatory &amp; Premises Details</div></div>
+  <div class="panel-body">
+    <div class="sub-sec">
+      <div class="sub-sec-head">Section 3 — Authorized Signatory</div>
+      <div class="sub-sec-body">
+        <div class="form-grid">
+          <div class="form-group"><label>Full Name <span class="req">*</span></label><input type="text" name="s3_name" value="<?= htmlspecialchars($v['s3_name'] ?? '') ?>"></div>
+          <div class="form-group"><label>Father's / Husband's Name <span class="req">*</span></label><input type="text" name="s3_father_name" value="<?= htmlspecialchars($v['s3_father_name'] ?? '') ?>"></div>
+          <div class="form-group"><label>Designation <span class="req">*</span></label><input type="text" name="s3_designation" value="<?= htmlspecialchars($v['s3_designation'] ?? '') ?>" placeholder="Director / Principal"></div>
+          <div class="form-group"><label>Qualification</label><input type="text" name="s3_qualification" value="<?= htmlspecialchars($v['s3_qualification'] ?? '') ?>"></div>
+          <div class="form-group"><label>Experience (Years)</label><input type="number" name="s3_experience" value="<?= htmlspecialchars($v['s3_experience'] ?? '') ?>" min="0"></div>
+          <div class="form-group">
+            <label>ID Proof Type <span class="req">*</span></label>
+            <select name="s3_id_type">
+              <option value="">-- Select --</option>
+              <?php foreach(['Aadhaar','PAN Card','Passport','Voter ID','Driving Licence'] as $id): ?>
+              <option <?= ($v['s3_id_type'] ?? '')==$id?'selected':'' ?>><?= $id ?></option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+          <div class="form-group"><label>ID Proof Number <span class="req">*</span></label><input type="text" name="s3_id_number" value="<?= htmlspecialchars($v['s3_id_number'] ?? '') ?>"></div>
+          <div class="form-group col-full"><label>Residential Address <span class="req">*</span></label><textarea name="s3_address" rows="2"><?= htmlspecialchars($v['s3_address'] ?? '') ?></textarea></div>
+          <div class="upload-box"><label>Upload: ID Proof Document <span class="req">*</span></label><input type="file" name="s3_id_proof" accept=".jpg,.jpeg,.png,.pdf"><div class="upload-hint">JPG / PNG / PDF &bull; Max 5MB</div></div>
+          <div class="upload-box"><label>Upload: Signatory Signature <span class="req">*</span></label><input type="file" name="s3_signature" accept=".jpg,.jpeg,.png,.pdf"><div class="upload-hint">Clear scan &bull; Max 5MB</div></div>
         </div>
-        <?php endif; ?>
-
-        <div class="form-card">
-            <div class="form-card-head">
-                <h4>NIELIT TPS — Center Registration</h4>
-                <span class="tps-badge">&#127968; Official Portal</span>
+      </div>
+    </div>
+    <div class="sub-sec">
+      <div class="sub-sec-head">Section 4 — Premises &amp; Infrastructure</div>
+      <div class="sub-sec-body">
+        <div class="form-grid">
+          <div class="form-group col-full">
+            <label>Type of Premises <span class="req">*</span></label>
+            <div class="radio-group">
+              <?php foreach(['Owned','Rented','Long Term Lease'] as $pt): ?>
+              <label><input type="radio" name="s4_premises_type" value="<?= $pt ?>" <?= ($v['s4_premises_type'] ?? '')==$pt?'checked':'' ?>><?= $pt ?></label>
+              <?php endforeach; ?>
             </div>
-            <div class="form-card-body">
-
-                <!-- ── STEP PROGRESS ── -->
-                <div class="steps-wrap">
-                    <div class="steps-track"><div class="steps-fill" id="stepsFill"></div></div>
-                    <div class="steps-row">
-                        <?php
-                        $step_labels = ['Account','Faculty','Financials','Documents','Review'];
-                        foreach ($step_labels as $i => $sl):
-                        ?>
-                        <div class="step-col">
-                            <div class="step-circle <?= $i===0?'active':'' ?>" id="sc<?=$i?>"><?= $i+1 ?></div>
-                            <div class="step-lbl <?= $i===0?'active':'' ?>" id="sl<?=$i?>"><?= $sl ?></div>
-                        </div>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
-
-                <!-- ════════════════════════════════════════
-                     FORM
-                ════════════════════════════════════════ -->
-                <form id="signupForm" method="POST" action="" enctype="multipart/form-data" novalidate>
-
-                <!-- ══════════════════════════════
-                     STEP 1 — ACCOUNT + LEGAL STATUS
-                ══════════════════════════════ -->
-                <div class="form-step active" id="step-0">
-                    <div class="step-title"><span class="snum">1</span>Account &amp; Legal Status</div>
-
-                    <div class="subsec">Login Credentials</div>
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-4">
-                            <label class="form-label">Center ID <span class="req">*</span></label>
-                            <input type="text" name="center_id" class="form-control" required placeholder="e.g. OD001">
-                            <p class="field-note">Unique identifier assigned to your center</p>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Password <span class="req">*</span></label>
-                            <input type="password" name="password" class="form-control" required minlength="6" placeholder="Min 6 characters">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Confirm Password <span class="req">*</span></label>
-                            <input type="password" name="confirm_password" class="form-control" required placeholder="Re-enter password">
-                        </div>
-                    </div>
-
-                    <div class="subsec">Institute Details</div>
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label">Institute Name <span class="req">*</span></label>
-                            <input type="text" name="inst_name" class="form-control" required placeholder="Full official name">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Institute Code <span style="font-weight:400;color:var(--muted)">(if allotted)</span></label>
-                            <input type="text" name="inst_code" class="form-control" placeholder="Leave blank if not allotted">
-                        </div>
-                    </div>
-
-                    <div class="subsec">Authorized Signatory Details (Sec 3)</div>
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-4">
-                            <label class="form-label">Signatory Name <span class="req">*</span></label>
-                            <input type="text" name="sig_name" class="form-control" required placeholder="Full name as per ID">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Father's Name <span class="req">*</span></label>
-                            <input type="text" name="father_name" class="form-control" required placeholder="Father's full name">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Designation <span class="req">*</span></label>
-                            <input type="text" name="designation" class="form-control" required placeholder="e.g. Director / Principal">
-                        </div>
-                    </div>
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-4">
-                            <label class="form-label">Qualification <span class="req">*</span></label>
-                            <input type="text" name="qualification" class="form-control" required placeholder="e.g. Graduation">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Experience (years) <span class="req">*</span></label>
-                            <input type="number" name="experience" class="form-control" required min="0" placeholder="0">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Mobile <span class="req">*</span></label>
-                            <input type="tel" name="sig_mobile" class="form-control" required maxlength="10" placeholder="10-digit mobile">
-                        </div>
-                    </div>
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-4">
-                            <label class="form-label">Email (Login ID) <span class="req">*</span></label>
-                            <input type="email" name="sig_email" class="form-control" required placeholder="email@domain.com">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">ID Type <span class="req">*</span></label>
-                            <select name="id_type" class="form-select" required>
-                                <option value="">-- Select --</option>
-                                <option value="pan_card">Pan Card</option>
-                                <option value="aadhar">Aadhar Card</option>
-                                <option value="passport">Passport</option>
-                                <option value="voter_id">Voter ID</option>
-                                <option value="driving_license">Driving Licence</option>
-                                <option value="other_govt">Any Other Govt. Card</option>
-                            </select>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">ID Proof Number <span class="req">*</span></label>
-                            <input type="text" name="id_number" class="form-control" required placeholder="As on ID document">
-                        </div>
-                    </div>
-
-                    <div class="subsec">Address Details</div>
-                    <div class="row g-3 mb-3">
-                        <div class="col-12">
-                            <label class="form-label">Address Line 1 <span class="req">*</span></label>
-                            <input type="text" name="address1" class="form-control" required placeholder="House No., Street, Village">
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label">Address Line 2</label>
-                            <input type="text" name="address2" class="form-control" placeholder="Landmark / PO / Taluk">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Locality / District <span class="req">*</span></label>
-                            <input type="text" name="locality" class="form-control" required placeholder="District">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">State <span class="req">*</span></label>
-                            <select name="state" class="form-select" required>
-                                <option value="">-- Select State --</option>
-                                <?php
-                                $states = ['Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Goa','Gujarat','Haryana','Himachal Pradesh','Jharkhand','Karnataka','Kerala','Madhya Pradesh','Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland','Odisha','Punjab','Rajasthan','Sikkim','Tamil Nadu','Telangana','Tripura','Uttar Pradesh','Uttarakhand','West Bengal','Delhi (NCT)','Jammu & Kashmir','Ladakh','Puducherry','Chandigarh','Andaman & Nicobar Islands'];
-                                foreach ($states as $s) echo "<option value=\"$s\">$s</option>";
-                                ?>
-                            </select>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Pincode <span class="req">*</span></label>
-                            <input type="text" name="pincode" class="form-control" required maxlength="6" placeholder="6-digit PIN">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">STD Code &amp; Land Line</label>
-                            <input type="text" name="landline" class="form-control" placeholder="e.g. 0120-2345678">
-                        </div>
-                    </div>
-
-                    <div class="subsec">Legal Status (Sec 9)</div>
-                    <label class="form-label">Legal Status of Institute <span class="req">*</span></label>
-                    <div class="radio-group" id="legal-grp">
-                        <?php
-                        $legal_opts = ['proprietorship'=>'(1) Proprietorship','partnership'=>'(2) Partnership','society_ngo'=>'(3) Society / NGO','trust'=>'(4) Trust','company'=>'(5) Company'];
-                        foreach ($legal_opts as $v => $l):
-                        ?>
-                        <label class="radio-pill">
-                            <input type="radio" name="legal_status" value="<?= $v ?>" required onchange="switchLegal(this.value)">
-                            <?= $l ?>
-                        </label>
-                        <?php endforeach; ?>
-                    </div>
-                    <input type="hidden" name="legal_status_hidden" id="legalHidden">
-
-                    <!-- Legal sub-panels -->
-                    <div class="legal-panel" id="lp_proprietorship">
-                        <div class="legal-title">Proprietorship Concern — Required Documents</div>
-                        <div class="legal-note">Registration/Certificate from any Govt. authority (Industrial/Business unit or Shop &amp; Establishment Act). Bank certificate accepted to establish ownership. Authority letter from proprietor required.</div>
-                        <div class="row g-3">
-                            <div class="col-md-6"><div class="upload-box"><label class="form-label">Govt. Registration Certificate <span class="req">*</span></label><input type="file" name="doc_prop" class="form-control" accept=".jpg,.jpeg,.png,.pdf"><p class="upload-hint">&#128206; JPG/PNG/PDF — Max 10MB</p></div></div>
-                            <div class="col-md-6"><div class="upload-box"><label class="form-label">Authority Letter from Proprietor <span class="req">*</span></label><input type="file" name="doc_prop_auth" class="form-control" accept=".jpg,.jpeg,.png,.pdf"><p class="upload-hint">&#128206; JPG/PNG/PDF — Max 10MB</p></div></div>
-                        </div>
-                    </div>
-
-                    <div class="legal-panel" id="lp_partnership">
-                        <div class="legal-title">Partnership Firm — Required Documents</div>
-                        <div class="legal-note">Registered Partnership Deed + Registration Certificate from Registrar of Firms (with names of partners) + Authority letter signed by all partners.</div>
-                        <div class="row g-3">
-                            <div class="col-md-6"><div class="upload-box"><label class="form-label">Registered Partnership Deed <span class="req">*</span></label><input type="file" name="doc_part_deed" class="form-control" accept=".jpg,.jpeg,.png,.pdf"><p class="upload-hint">&#128206; JPG/PNG/PDF — Max 10MB</p></div></div>
-                            <div class="col-md-6"><div class="upload-box"><label class="form-label">Registration Certificate from Registrar of Firms <span class="req">*</span></label><input type="file" name="doc_part_reg" class="form-control" accept=".jpg,.jpeg,.png,.pdf"><p class="upload-hint">&#128206; JPG/PNG/PDF — Max 10MB</p></div></div>
-                        </div>
-                    </div>
-
-                    <div class="legal-panel" id="lp_society_ngo">
-                        <div class="legal-title">Society / NGO — Required Documents</div>
-                        <div class="legal-note">Certificate from Registrar of Society + Rules &amp; Regulations / Memorandum of Association + Resolution nominating the authorised person duly signed by members.</div>
-                        <div class="row g-3">
-                            <div class="col-md-6"><div class="upload-box"><label class="form-label">Certificate from Registrar of Society <span class="req">*</span></label><input type="file" name="doc_soc_cert" class="form-control" accept=".jpg,.jpeg,.png,.pdf"><p class="upload-hint">&#128206; JPG/PNG/PDF — Max 10MB</p></div></div>
-                            <div class="col-md-6"><div class="upload-box"><label class="form-label">Rules &amp; Regulations / Memorandum of Association <span class="req">*</span></label><input type="file" name="doc_soc_moa" class="form-control" accept=".jpg,.jpeg,.png,.pdf"><p class="upload-hint">&#128206; JPG/PNG/PDF — Max 10MB</p></div></div>
-                        </div>
-                    </div>
-
-                    <div class="legal-panel" id="lp_trust">
-                        <div class="legal-title">Trust — Required Documents</div>
-                        <div class="legal-note">Trust Deed + Certificate of Registration of Trust + Resolution to nominate authorised person signed by all Trustees.</div>
-                        <div class="row g-3">
-                            <div class="col-md-6"><div class="upload-box"><label class="form-label">Trust Deed <span class="req">*</span></label><input type="file" name="doc_trust_deed" class="form-control" accept=".jpg,.jpeg,.png,.pdf"><p class="upload-hint">&#128206; JPG/PNG/PDF — Max 10MB</p></div></div>
-                            <div class="col-md-6"><div class="upload-box"><label class="form-label">Certificate of Registration of Trust <span class="req">*</span></label><input type="file" name="doc_trust_cert" class="form-control" accept=".jpg,.jpeg,.png,.pdf"><p class="upload-hint">&#128206; JPG/PNG/PDF — Max 10MB</p></div></div>
-                        </div>
-                    </div>
-
-                    <div class="legal-panel" id="lp_company">
-                        <div class="legal-title">Company — Required Documents</div>
-                        <div class="legal-note">Certificate of Incorporation + Memorandum of Association + Board Resolution authorizing the authorized person to deal with NIELIT.</div>
-                        <div class="row g-3">
-                            <div class="col-md-6"><div class="upload-box"><label class="form-label">Certificate of Incorporation <span class="req">*</span></label><input type="file" name="doc_co_inc" class="form-control" accept=".jpg,.jpeg,.png,.pdf"><p class="upload-hint">&#128206; JPG/PNG/PDF — Max 10MB</p></div></div>
-                            <div class="col-md-6"><div class="upload-box"><label class="form-label">Memorandum of Association <span class="req">*</span></label><input type="file" name="doc_co_moa" class="form-control" accept=".jpg,.jpeg,.png,.pdf"><p class="upload-hint">&#128206; JPG/PNG/PDF — Max 10MB</p></div></div>
-                        </div>
-                    </div>
-                </div><!-- /step-0 -->
-
-                <!-- ══════════════════════════════
-                     STEP 2 — FACULTY + INFRA
-                ══════════════════════════════ -->
-                <div class="form-step" id="step-1">
-                    <div class="step-title"><span class="snum">2</span>Faculty &amp; Infrastructure</div>
-
-                    <div class="subsec">Premises &amp; Infrastructure (Sec 4)</div>
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-3">
-                            <label class="form-label">Premise Type <span class="req">*</span></label>
-                            <select name="premise_type" class="form-select" required>
-                                <option value="">-- Select --</option>
-                                <option value="Owned">Self Owned</option>
-                                <option value="Rented">Rented</option>
-                                <option value="Lease">Long Term Lease (min. 11 months)</option>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label">Premises Period</label>
-                            <input type="text" name="premises_period" class="form-control" placeholder="e.g. Apr 2024 – Mar 2027">
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label">Carpet Area (sq.ft) <span class="req">*</span></label>
-                            <input type="number" name="infra_area" class="form-control" required min="0" placeholder="0">
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label">No. of Computers</label>
-                            <input type="number" name="infra_computers" class="form-control" min="0" placeholder="0">
-                        </div>
-                    </div>
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-3">
-                            <label class="form-label">Computer Labs <span class="req">*</span></label>
-                            <input type="number" name="infra_labs" class="form-control" required min="0" placeholder="0">
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label">Seating Capacity</label>
-                            <input type="number" name="seating_capacity" class="form-control" min="0" placeholder="0">
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label">No. of Boys</label>
-                            <input type="number" name="no_boys" class="form-control" min="0" placeholder="0">
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label">No. of Girls</label>
-                            <input type="number" name="no_girls" class="form-control" min="0" placeholder="0">
-                        </div>
-                    </div>
-                    <div class="row g-3 mb-4">
-                        <div class="col-md-3">
-                            <label class="form-label">Library Available</label>
-                            <select name="has_library" class="form-select"><option value="N">No</option><option value="Y">Yes</option></select>
-                        </div>
-                    </div>
-
-                    <div class="subsec">Faculty Education &amp; Qualification (Sec 12)</div>
-                    <?php for ($f = 1; $f <= 2; $f++): ?>
-                    <div class="fac-block">
-                        <div class="fac-title">
-                            <span class="fac-badge">Faculty <?= $f ?></span>
-                            Faculty Member <?= $f ?> — Education Details
-                        </div>
-                        <div class="row g-3 mb-3">
-                            <div class="col-md-4">
-                                <label class="form-label">Name of Faculty <?= $f === 1 ? '<span class="req">*</span>' : '' ?></label>
-                                <input type="text" name="fac_name[]" class="form-control" <?= $f===1?'required':'' ?> placeholder="Full name">
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">Qualification</label>
-                                <input type="text" name="fac_qual[]" class="form-control" placeholder="e.g. OSCIT(Computer)">
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">Examination Passed</label>
-                                <input type="text" name="fac_exam[]" class="form-control" placeholder="e.g. Others">
-                            </div>
-                        </div>
-                        <div class="row g-3 mb-3">
-                            <div class="col-md-4">
-                                <label class="form-label">Year of Passing</label>
-                                <input type="text" name="fac_year[]" class="form-control" maxlength="4" placeholder="YYYY">
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">Board / University</label>
-                                <input type="text" name="fac_board[]" class="form-control" placeholder="e.g. OSOU / OKCL">
-                            </div>
-                        </div>
-                        <div class="upload-box">
-                            <label class="form-label">Faculty <?= $f ?> — Qualification Certificate</label>
-                            <input type="file" name="doc_fac<?= $f ?>" class="form-control" accept=".jpg,.jpeg,.png,.pdf">
-                            <p class="upload-hint">&#128206; JPG/PNG/PDF — Max 10MB</p>
-                        </div>
-                    </div>
-                    <?php endfor; ?>
-
-                    <div class="subsec">Faculty Experience (Sec 13)</div>
-                    <?php for ($f = 1; $f <= 2; $f++): ?>
-                    <div class="fac-block">
-                        <div class="fac-title">
-                            <span class="fac-badge">Faculty <?= $f ?></span>
-                            Faculty Member <?= $f ?> — Experience
-                        </div>
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <label class="form-label">Date From &ndash; Date To</label>
-                                <input type="text" name="fac_exp_period[]" class="form-control" placeholder="DD-MM-YYYY to DD-MM-YYYY">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Name of Organization</label>
-                                <input type="text" name="fac_org[]" class="form-control" placeholder="Organization name">
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">Date of Joining</label>
-                                <input type="text" name="fac_doj[]" class="form-control" placeholder="DD-MM-YYYY">
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">ID Type</label>
-                                <select name="fac_id_type[]" class="form-select">
-                                    <option value="">-- Select --</option>
-                                    <option>Pan Card</option><option>Aadhar Card</option><option>Passport</option><option>Any Other Govt. Card</option>
-                                </select>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">ID Proof Number</label>
-                                <input type="text" name="fac_id_num[]" class="form-control" placeholder="ID number">
-                            </div>
-                        </div>
-                    </div>
-                    <?php endfor; ?>
-                </div><!-- /step-1 -->
-
-                <!-- ══════════════════════════════
-                     STEP 3 — FINANCIAL DETAILS
-                ══════════════════════════════ -->
-                <div class="form-step" id="step-2">
-                    <div class="step-title"><span class="snum">3</span>Financial Details (Sec 14)</div>
-                    <div class="row g-3">
-                        <div class="col-md-4">
-                            <label class="form-label">Financial Ending Year <span class="req">*</span></label>
-                            <input type="number" name="fin_year" class="form-control" required placeholder="e.g. 2024">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Annual Turnover — Computer Training (₹)</label>
-                            <input type="text" name="fin_turnover" class="form-control" placeholder="Amount in Lakhs">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Annual Turnover — Other Activities (₹)</label>
-                            <input type="text" name="fin_turnover_other" class="form-control" placeholder="Amount in Lakhs">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Students Placed <span class="req">*</span></label>
-                            <input type="number" name="fin_placed" class="form-control" required min="0" placeholder="0">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Income Tax Exempted</label>
-                            <select name="income_tax_exempt" class="form-select">
-                                <option value="N">No (N)</option>
-                                <option value="Y">Yes (Y)</option>
-                            </select>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Remarks</label>
-                            <input type="text" name="fin_remarks" class="form-control" placeholder="Any remarks (optional)">
-                        </div>
-                    </div>
-                </div><!-- /step-2 -->
-
-                <!-- ══════════════════════════════
-                     STEP 4 — UPLOAD DOCUMENTS (Sec 17)
-                ══════════════════════════════ -->
-                <div class="form-step" id="step-3">
-                    <div class="step-title"><span class="snum">4</span>Upload Documents (Sec 17)</div>
-                    <div class="alert alert-warning small mb-3" style="border-radius:4px;">
-                        &#9888; Upload PDF or JPG/PNG formats only. Maximum size: <strong>10 MB</strong> per file.
-                    </div>
-
-                    <table class="doc-table">
-                        <thead>
-                            <tr>
-                                <th class="sno">S.No.</th>
-                                <th>Certificate / Document Description</th>
-                                <th style="text-align:center;width:88px;">Status</th>
-                                <th class="upload-td">Upload File</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                        <?php
-                        $doc17 = [
-                            ['doc_id_proof',       'Authorized ID Proof',                                                                                                          true ],
-                            ['doc_signature',      'Authorized Signatory Signature',                                                                                               true ],
-                            ['doc_layout_map',     'Layout Map of the Institute Premises',                                                                                         true ],
-                            ['doc_govt_reg',       'Registration Certificate from any Government Authority',                                                                       true ],
-                            ['doc_franchisee',     'Franchisee / Licensee Agreement',                                                                                             false],
-                            ['doc_sub_registrar',  'Registration with Registrar / Sub-Registrar',                                                                                 false],
-                            ['doc_sales_tax',      'Registration with Sales Tax / Services Tax or any other Tax Authority',                                                        false],
-                            ['doc_lease_noc',      'Lease / Rent Agreement / Ownership Deed with NOC',                                                                            true ],
-                            ['doc_other',          'Any Other Relevant Document',                                                                                                 false],
-                            ['doc_building_photos','Photos of Building (Front view with hoarding, Classrooms, Computer Lab, Library, Seating area, Washrooms, Reception, Staffroom etc.)', true],
-                        ];
-                        foreach ($doc17 as $i => [$fname, $dname, $req]):
-                        ?>
-                        <tr>
-                            <td class="sno"><?= $i+1 ?></td>
-                            <td>
-                                <?= htmlspecialchars($dname) ?>
-                                <?php if ($req): ?><br><small style="color:#b71c1c;font-size:10.5px;font-weight:600;">* Mandatory</small><?php endif; ?>
-                            </td>
-                            <td style="text-align:center;">
-                                <span class="<?= $req ? 'badge-req' : 'badge-opt' ?>"><?= $req ? 'Required' : 'Optional' ?></span>
-                            </td>
-                            <td class="upload-td">
-                                <input type="file" name="<?= $fname ?>" class="form-control form-control-sm" <?= $req ? 'required' : '' ?> accept=".jpg,.jpeg,.png,.pdf">
-                                <div class="mini-hint">JPG/PNG/PDF &nbsp;&bull;&nbsp; Max 10MB</div>
-                            </td>
-                        </tr>
-                        <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div><!-- /step-3 -->
-
-                <!-- ══════════════════════════════
-                     STEP 5 — REVIEW + SUBMIT
-                ══════════════════════════════ -->
-                <div class="form-step" id="step-4">
-                    <div class="step-title"><span class="snum">5</span>Final Review &amp; Submit</div>
-
-                    <div class="review-box">
-                        <h6>&#9432; &nbsp;Application Summary</h6>
-                        <p style="font-size:12.5px;color:var(--muted);">Please review all details before submitting. Once submitted, changes require Admin approval.</p>
-                        <div class="review-row"><span class="review-key">Center ID</span><span class="review-val" id="rv_center_id">—</span></div>
-                        <div class="review-row"><span class="review-key">Institute Name</span><span class="review-val" id="rv_inst_name">—</span></div>
-                        <div class="review-row"><span class="review-key">Signatory Name</span><span class="review-val" id="rv_sig_name">—</span></div>
-                        <div class="review-row"><span class="review-key">Email</span><span class="review-val" id="rv_email">—</span></div>
-                        <div class="review-row"><span class="review-key">Mobile</span><span class="review-val" id="rv_mobile">—</span></div>
-                        <div class="review-row"><span class="review-key">Legal Status</span><span class="review-val" id="rv_legal">—</span></div>
-                        <div class="review-row"><span class="review-key">State</span><span class="review-val" id="rv_state">—</span></div>
-                    </div>
-
-                    <div class="form-check mb-4">
-                        <input class="form-check-input" type="checkbox" id="declareCheck" required>
-                        <label class="form-check-label fw-bold" for="declareCheck" style="font-size:12.5px;">
-                            I hereby declare that all information provided above is true, accurate and complete to the best of my knowledge. I understand that submission of false or misleading information may result in rejection or cancellation of Training Partner status.
-                        </label>
-                    </div>
-
-                    <button type="submit" class="btn-submit">&#10003; &nbsp;Submit Registration Application</button>
-                </div><!-- /step-4 -->
-
-                <!-- Nav Buttons -->
-                <div class="nav-btns">
-                    <button type="button" class="btn-govt-prev" id="prevBtn" onclick="stepNav(-1)" style="display:none;">&#8592; &nbsp;Back</button>
-                    <button type="button" class="btn-govt-next" id="nextBtn" onclick="stepNav(1)">Next Step &nbsp;&#8594;</button>
-                </div>
-
-                </form><!-- /signupForm -->
-
-                <div class="text-center mt-4 pt-3 border-top">
-                    <a href="../login.php" class="text-decoration-none" style="color:var(--muted);font-size:12.5px;font-weight:600;">
-                        &#128274; &nbsp;Already registered? Login here
-                    </a>
-                </div>
-
-            </div><!-- /form-card-body -->
-        </div><!-- /form-card -->
-    </div><!-- /form column -->
-
-    <!-- ════ SIDEBAR ════ -->
-    <aside class="sidebar">
-        <div class="s-card">
-            <div class="s-head">&#9776; &nbsp;Form Steps</div>
-            <div class="s-body">
-                <nav class="s-nav">
-                    <a href="#" onclick="jumpTo(0);return false;"><span class="dot"></span>1. Account &amp; Legal Status</a>
-                    <a href="#" onclick="jumpTo(1);return false;"><span class="dot"></span>2. Faculty &amp; Infrastructure</a>
-                    <a href="#" onclick="jumpTo(2);return false;"><span class="dot"></span>3. Financial Details</a>
-                    <a href="#" onclick="jumpTo(3);return false;"><span class="dot"></span>4. Upload Documents</a>
-                    <a href="#" onclick="jumpTo(4);return false;"><span class="dot"></span>5. Review &amp; Submit</a>
-                </nav>
-            </div>
+          </div>
+          <div class="form-group"><label>Total Carpet Area (sq.ft.) <span class="req">*</span></label><input type="number" name="s4_carpet_area" value="<?= htmlspecialchars($v['s4_carpet_area'] ?? '') ?>"></div>
+          <div class="form-group"><label>Number of Computers <span class="req">*</span></label><input type="number" name="s4_computers" value="<?= htmlspecialchars($v['s4_computers'] ?? '') ?>" min="1"></div>
+          <div class="form-group"><label>Seating Capacity <span class="req">*</span></label><input type="number" name="s4_seating" value="<?= htmlspecialchars($v['s4_seating'] ?? '') ?>" min="1"></div>
+          <div class="form-group">
+            <label>Internet Connectivity</label>
+            <select name="s4_internet">
+              <option value="">-- Select --</option>
+              <?php foreach(['Broadband','Leased Line','Fiber (FTTH)','VSAT'] as $ic): ?>
+              <option <?= ($v['s4_internet'] ?? '')==$ic?'selected':'' ?>><?= $ic ?></option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+          <div class="upload-box"><label>Upload: Layout Map <span class="req">*</span></label><input type="file" name="s4_layout_map" accept=".jpg,.jpeg,.png,.pdf"><div class="upload-hint">JPG/PNG/PDF &bull; Max 5MB</div></div>
+          <div class="upload-box"><label>Upload: Building Photos <span class="req">*</span></label><input type="file" name="s4_building_photo" accept=".jpg,.jpeg,.png,.pdf"><div class="upload-hint">JPG/PNG/PDF &bull; Max 5MB</div></div>
+          <div class="upload-box"><label>Upload: Lease / Ownership Agreement <span class="req">*</span></label><input type="file" name="s4_agreement" accept=".jpg,.jpeg,.png,.pdf"><div class="upload-hint">JPG/PNG/PDF &bull; Max 5MB</div></div>
         </div>
-        <div class="s-card">
-            <div class="s-head">&#9888; &nbsp;Important Instructions</div>
-            <div class="s-body">
-                <div class="info-box">
-                    <strong>Before You Apply</strong>
-                    &bull; All documents must be self-attested.<br>
-                    &bull; File format: JPG, PNG or PDF only.<br>
-                    &bull; Max file size: <strong>10 MB</strong> per document.<br>
-                    &bull; Premises: Owned or min. 11-month lease.<br>
-                    &bull; Minimum <strong>2 qualified faculty</strong> required.<br>
-                    &bull; Keep originals ready for verification.<br>
-                    &bull; Incomplete applications will be rejected.
-                </div>
-            </div>
-        </div>
-        <div class="s-card">
-            <div class="s-head">&#9990; &nbsp;Helpdesk</div>
-            <div class="s-body">
-                <div class="hl-row"><span class="hl-key">Phone</span><span class="hl-val">1800-111-555</span></div>
-                <div class="hl-row"><span class="hl-key">Email</span><span class="hl-val" style="font-size:11px;">tp@nielit.gov.in</span></div>
-                <div class="hl-row"><span class="hl-key">Timing</span><span class="hl-val" style="font-size:11px;">10AM–5PM (Mon–Fri)</span></div>
-            </div>
-        </div>
-        <div class="s-card">
-            <div class="s-head">&#128196; &nbsp;Downloads</div>
-            <div class="s-body">
-                <nav class="s-nav">
-                    <a href="#"><span class="dot"></span>TP Application Form (PDF)</a>
-                    <a href="#"><span class="dot"></span>Document Checklist</a>
-                    <a href="#"><span class="dot"></span>Guidelines for TP</a>
-                    <a href="#"><span class="dot"></span>Fee Structure</a>
-                </nav>
-            </div>
-        </div>
-    </aside>
+      </div>
+    </div>
+  </div>
+  <div class="nav-bar">
+    <button type="button" class="btn btn-prev" onclick="goPrev(2)">&#8592; Back</button>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span class="draft-saved-msg" id="dm2">&#10003; Draft Saved!</span>
+      <button type="button" class="btn btn-draft" onclick="saveDraft(2)">&#128190; Save Draft</button>
+      <button type="button" class="btn btn-next" onclick="goNext(2)">Next &#8594;</button>
+    </div>
+  </div>
+</div>
 
-</div><!-- /page-wrap -->
+<!-- ══ STEP 3: Legal Status ══ -->
+<div class="step-panel" id="panel3">
+  <div class="panel-header"><div class="panel-num">3</div><div class="panel-title">Section 9 — Legal Status of Institute</div></div>
+  <div class="panel-body">
+    <div class="form-group">
+      <label>Select Legal Status <span class="req">*</span></label>
+      <div class="radio-group">
+        <?php $lopts=['1'=>'Proprietorship','2'=>'Partnership Firm','3'=>'Society / Trust','4'=>'Pvt / Public Company','5'=>'Govt / PSU'];
+        foreach($lopts as $val=>$lbl): ?>
+        <label><input type="radio" name="s9_legal_status" value="<?= $val ?>" <?= ($v['s9_legal_status'] ?? '')==$val?'checked':'' ?> onchange="toggleLegal()"><?= $val ?>. <?= $lbl ?></label>
+        <?php endforeach; ?>
+      </div>
+    </div>
 
-<!-- ── FOOTER ── -->
+    <div class="cond-block <?= ($v['s9_legal_status'] ?? '')=='1'?'visible':'' ?>" id="legal_1">
+      <div class="sub-sec"><div class="sub-sec-head">Proprietorship Details</div><div class="sub-sec-body">
+        <div class="form-grid">
+          <div class="form-group"><label>Proprietor Name</label><input type="text" name="s9_prop_name" value="<?= htmlspecialchars($v['s9_prop_name'] ?? '') ?>"></div>
+          <div class="upload-box"><label>Upload: GST / Trade Licence / Govt. Registration <span class="req">*</span></label><input type="file" name="s9_legal_doc" accept=".jpg,.jpeg,.png,.pdf"><div class="upload-hint">JPG/PNG/PDF &bull; Max 5MB</div></div>
+        </div>
+      </div></div>
+    </div>
+
+    <div class="cond-block <?= ($v['s9_legal_status'] ?? '')=='2'?'visible':'' ?>" id="legal_2">
+      <div class="sub-sec"><div class="sub-sec-head">Partnership Firm Documents</div><div class="sub-sec-body">
+        <div class="form-grid">
+          <div class="form-group"><label>Deed Date</label><input type="date" name="s9_partnership_date" value="<?= htmlspecialchars($v['s9_partnership_date'] ?? '') ?>"></div>
+          <div class="form-group"><label>Registration Number</label><input type="text" name="s9_partnership_reg" value="<?= htmlspecialchars($v['s9_partnership_reg'] ?? '') ?>"></div>
+          <div class="upload-box col-full"><label>Upload: Partnership Deed (Registered) <span class="req">*</span></label><input type="file" name="s9_legal_doc" accept=".jpg,.jpeg,.png,.pdf"><div class="upload-hint">JPG/PNG/PDF &bull; Max 5MB</div></div>
+        </div>
+      </div></div>
+    </div>
+
+    <div class="cond-block <?= ($v['s9_legal_status'] ?? '')=='3'?'visible':'' ?>" id="legal_3">
+      <div class="sub-sec"><div class="sub-sec-head">Society / Trust Documents</div><div class="sub-sec-body">
+        <div class="form-grid">
+          <div class="form-group"><label>Registration Number</label><input type="text" name="s9_society_reg" value="<?= htmlspecialchars($v['s9_society_reg'] ?? '') ?>"></div>
+          <div class="form-group"><label>Registration Date</label><input type="date" name="s9_society_date" value="<?= htmlspecialchars($v['s9_society_date'] ?? '') ?>"></div>
+          <div class="upload-box"><label>Upload: Registration Certificate <span class="req">*</span></label><input type="file" name="s9_legal_doc" accept=".jpg,.jpeg,.png,.pdf"><div class="upload-hint">JPG/PNG/PDF &bull; Max 5MB</div></div>
+          <div class="upload-box"><label>Upload: Memorandum / Trust Deed <span class="req">*</span></label><input type="file" name="s9_moa_doc" accept=".jpg,.jpeg,.png,.pdf"><div class="upload-hint">JPG/PNG/PDF &bull; Max 5MB</div></div>
+        </div>
+      </div></div>
+    </div>
+
+    <div class="cond-block <?= ($v['s9_legal_status'] ?? '')=='4'?'visible':'' ?>" id="legal_4">
+      <div class="sub-sec"><div class="sub-sec-head">Company Documents (MCA / ROC)</div><div class="sub-sec-body">
+        <div class="form-grid">
+          <div class="form-group"><label>CIN Number</label><input type="text" name="s9_cin" value="<?= htmlspecialchars($v['s9_cin'] ?? '') ?>"></div>
+          <div class="form-group"><label>Date of Incorporation</label><input type="date" name="s9_incorp_date" value="<?= htmlspecialchars($v['s9_incorp_date'] ?? '') ?>"></div>
+          <div class="upload-box"><label>Upload: Certificate of Incorporation <span class="req">*</span></label><input type="file" name="s9_legal_doc" accept=".jpg,.jpeg,.png,.pdf"><div class="upload-hint">JPG/PNG/PDF &bull; Max 5MB</div></div>
+          <div class="upload-box"><label>Upload: MOA &amp; AOA <span class="req">*</span></label><input type="file" name="s9_moa_doc" accept=".jpg,.jpeg,.png,.pdf"><div class="upload-hint">JPG/PNG/PDF &bull; Max 5MB</div></div>
+        </div>
+      </div></div>
+    </div>
+
+    <div class="cond-block <?= ($v['s9_legal_status'] ?? '')=='5'?'visible':'' ?>" id="legal_5">
+      <div class="sub-sec"><div class="sub-sec-head">Government / PSU Documents</div><div class="sub-sec-body">
+        <div class="form-grid">
+          <div class="form-group"><label>Department / Ministry Name</label><input type="text" name="s9_dept_name" value="<?= htmlspecialchars($v['s9_dept_name'] ?? '') ?>"></div>
+          <div class="upload-box"><label>Upload: Govt. Authorization Letter <span class="req">*</span></label><input type="file" name="s9_legal_doc" accept=".jpg,.jpeg,.png,.pdf"><div class="upload-hint">JPG/PNG/PDF &bull; Max 5MB</div></div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+  <div class="nav-bar">
+    <button type="button" class="btn btn-prev" onclick="goPrev(3)">&#8592; Back</button>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span class="draft-saved-msg" id="dm3">&#10003; Draft Saved!</span>
+      <button type="button" class="btn btn-draft" onclick="saveDraft(3)">&#128190; Save Draft</button>
+      <button type="button" class="btn btn-next" onclick="goNext(3)">Next &#8594;</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ STEP 4: Faculty + Financial ══ -->
+<div class="step-panel" id="panel4">
+  <div class="panel-header"><div class="panel-num">4</div><div class="panel-title">Faculty, Experience &amp; Financial Details</div></div>
+  <div class="panel-body">
+
+    <div class="sub-sec">
+      <div class="sub-sec-head">Section 12 &amp; 13 — Faculty Member 1</div>
+      <div class="sub-sec-body">
+        <div class="form-grid three">
+          <div class="form-group"><label>Name <span class="req">*</span></label><input type="text" name="s12_f1_name" value="<?= htmlspecialchars($v['s12_f1_name'] ?? '') ?>"></div>
+          <div class="form-group"><label>Qualification <span class="req">*</span></label><input type="text" name="s12_f1_qual" value="<?= htmlspecialchars($v['s12_f1_qual'] ?? '') ?>"></div>
+          <div class="form-group"><label>Examination Passed</label><input type="text" name="s12_f1_exam" value="<?= htmlspecialchars($v['s12_f1_exam'] ?? '') ?>"></div>
+          <div class="form-group"><label>Year of Passing</label><input type="number" name="s12_f1_year" value="<?= htmlspecialchars($v['s12_f1_year'] ?? '') ?>" min="1970" max="2026"></div>
+          <div class="form-group"><label>Board / University</label><input type="text" name="s12_f1_board" value="<?= htmlspecialchars($v['s12_f1_board'] ?? '') ?>"></div>
+          <div class="form-group"><label>Designation</label><input type="text" name="s13_f1_desig" value="<?= htmlspecialchars($v['s13_f1_desig'] ?? '') ?>"></div>
+          <div class="form-group"><label>Experience From</label><input type="date" name="s13_f1_from" value="<?= htmlspecialchars($v['s13_f1_from'] ?? '') ?>"></div>
+          <div class="form-group"><label>Experience To</label><input type="date" name="s13_f1_to" value="<?= htmlspecialchars($v['s13_f1_to'] ?? '') ?>"></div>
+          <div class="form-group"><label>Organization</label><input type="text" name="s13_f1_org" value="<?= htmlspecialchars($v['s13_f1_org'] ?? '') ?>"></div>
+        </div>
+        <div style="margin-top:12px"><div class="upload-box" style="max-width:360px">
+          <label>Upload: Faculty 1 Certificate <span class="req">*</span></label>
+          <input type="file" name="s12_faculty1_cert" accept=".jpg,.jpeg,.png,.pdf">
+          <div class="upload-hint">JPG/PNG/PDF &bull; Max 5MB</div>
+        </div></div>
+      </div>
+    </div>
+
+    <div class="sub-sec">
+      <div class="sub-sec-head">Section 12 &amp; 13 — Faculty Member 2 <span style="font-weight:400;color:var(--muted)">(Optional)</span></div>
+      <div class="sub-sec-body">
+        <div class="form-grid three">
+          <div class="form-group"><label>Name</label><input type="text" name="s12_f2_name" value="<?= htmlspecialchars($v['s12_f2_name'] ?? '') ?>"></div>
+          <div class="form-group"><label>Qualification</label><input type="text" name="s12_f2_qual" value="<?= htmlspecialchars($v['s12_f2_qual'] ?? '') ?>"></div>
+          <div class="form-group"><label>Examination Passed</label><input type="text" name="s12_f2_exam" value="<?= htmlspecialchars($v['s12_f2_exam'] ?? '') ?>"></div>
+          <div class="form-group"><label>Year of Passing</label><input type="number" name="s12_f2_year" value="<?= htmlspecialchars($v['s12_f2_year'] ?? '') ?>" min="1970" max="2026"></div>
+          <div class="form-group"><label>Board / University</label><input type="text" name="s12_f2_board" value="<?= htmlspecialchars($v['s12_f2_board'] ?? '') ?>"></div>
+          <div class="form-group"><label>Designation</label><input type="text" name="s13_f2_desig" value="<?= htmlspecialchars($v['s13_f2_desig'] ?? '') ?>"></div>
+          <div class="form-group"><label>Experience From</label><input type="date" name="s13_f2_from" value="<?= htmlspecialchars($v['s13_f2_from'] ?? '') ?>"></div>
+          <div class="form-group"><label>Experience To</label><input type="date" name="s13_f2_to" value="<?= htmlspecialchars($v['s13_f2_to'] ?? '') ?>"></div>
+          <div class="form-group"><label>Organization</label><input type="text" name="s13_f2_org" value="<?= htmlspecialchars($v['s13_f2_org'] ?? '') ?>"></div>
+        </div>
+        <div style="margin-top:12px"><div class="upload-box" style="max-width:360px">
+          <label>Upload: Faculty 2 Certificate <span class="opt">(optional)</span></label>
+          <input type="file" name="s12_faculty2_cert" accept=".jpg,.jpeg,.png,.pdf">
+          <div class="upload-hint">JPG/PNG/PDF &bull; Max 5MB</div>
+        </div></div>
+      </div>
+    </div>
+
+    <div class="sub-sec">
+      <div class="sub-sec-head">Section 14 — Financial &amp; Placement Details</div>
+      <div class="sub-sec-body">
+        <div class="form-grid three">
+          <div class="form-group">
+            <label>Financial Year <span class="req">*</span></label>
+            <select name="s14_fy">
+              <option value="">-- Select --</option>
+              <?php foreach(['2024-25','2023-24','2022-23'] as $fy): ?>
+              <option <?= ($v['s14_fy'] ?? '')==$fy?'selected':'' ?>><?= $fy ?></option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+          <div class="form-group"><label>Turnover — IT / Computer (₹)</label><input type="number" name="s14_turnover_it" value="<?= htmlspecialchars($v['s14_turnover_it'] ?? '') ?>" placeholder="INR"></div>
+          <div class="form-group"><label>Turnover — Other (₹)</label><input type="number" name="s14_turnover_other" value="<?= htmlspecialchars($v['s14_turnover_other'] ?? '') ?>" placeholder="INR"></div>
+          <div class="form-group">
+            <label>Income Tax Exempted?</label>
+            <div class="radio-group">
+              <label><input type="radio" name="s14_tax_exempt" value="Yes" <?= ($v['s14_tax_exempt'] ?? '')=='Yes'?'checked':'' ?>>Yes</label>
+              <label><input type="radio" name="s14_tax_exempt" value="No" <?= ($v['s14_tax_exempt'] ?? '')=='No'?'checked':'' ?>>No</label>
+            </div>
+          </div>
+          <div class="form-group"><label>Students Trained (Last FY)</label><input type="number" name="s14_students_trained" value="<?= htmlspecialchars($v['s14_students_trained'] ?? '') ?>" min="0"></div>
+          <div class="form-group"><label>Students Placed (Last FY)</label><input type="number" name="s14_students_placed" value="<?= htmlspecialchars($v['s14_students_placed'] ?? '') ?>" min="0"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="nav-bar">
+    <button type="button" class="btn btn-prev" onclick="goPrev(4)">&#8592; Back</button>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span class="draft-saved-msg" id="dm4">&#10003; Draft Saved!</span>
+      <button type="button" class="btn btn-draft" onclick="saveDraft(4)">&#128190; Save Draft</button>
+      <button type="button" class="btn btn-next" onclick="goNext(4)">Next &#8594;</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ STEP 5: Documents + Submit ══ -->
+<div class="step-panel" id="panel5">
+  <div class="panel-header"><div class="panel-num">5</div><div class="panel-title">Section 17 — Document Uploads &amp; Final Submission</div></div>
+  <div class="panel-body">
+    <p style="font-size:12.5px;color:var(--muted);margin-bottom:14px">Upload all applicable documents. Formats: JPG, PNG, PDF. Max 5MB each.</p>
+
+    <table class="doc-table">
+      <thead><tr><th style="width:36px">#</th><th>Document Name</th><th style="width:130px">Status</th><th style="width:250px">Upload</th></tr></thead>
+      <tbody>
+      <?php
+      $docs=[
+        ['s17_id_proof',       'Authorized Signatory — ID Proof',                                       true],
+        ['s17_signatory_sig',  'Authorized Signatory — Specimen Signature',                             true],
+        ['s17_layout_map',     'Layout Map of Premises',                                               true],
+        ['s17_reg_cert',       'Registration Certificate from any Govt. Authority',                    true],
+        ['s17_franchise_agmt', 'Franchisee / Licensee Agreement',                                     false],
+        ['s17_registrar_reg',  'Registration with Registrar / Sub Registrar',                         false],
+        ['s17_tax_reg',        'Registration with Sales Tax / Services Tax / Other Tax Authority',     false],
+        ['s17_lease_deed',     'Lease / Rent Agreement / Ownership Deed with NOC',                    true],
+        ['s17_other_doc',      'Any Other Relevant Document',                                          false],
+        ['s17_building_photos','Photos of Building (Classrooms, Lab, Library, Washrooms, Reception etc.)',true],
+      ];
+      foreach($docs as $i=>[$fname,$label,$req]):
+      ?>
+      <tr>
+        <td style="font-weight:700;color:var(--navy2);text-align:center"><?= $i+1 ?></td>
+        <td><?= htmlspecialchars($label) ?></td>
+        <td><?php if($req): ?><span style="color:var(--error);font-weight:700;font-size:12px">&#9679; Required</span><?php else: ?><span style="color:var(--muted);font-size:12px">&#9675; If Applicable</span><?php endif; ?></td>
+        <td style="padding:6px 11px">
+          <input type="file" name="<?= $fname ?>" accept=".jpg,.jpeg,.png,.pdf" style="font-size:11.5px;width:100%">
+          <div style="font-size:10px;color:var(--muted);margin-top:1px">JPG/PNG/PDF &bull; Max 5MB</div>
+        </td>
+      </tr>
+      <?php endforeach; ?>
+      </tbody>
+    </table>
+
+    <div class="decl-box">
+      <label>
+        <input type="checkbox" name="declaration" value="1" <?= !empty($v['declaration'])?'checked':'' ?>>
+        <span>I hereby declare that all information provided in this application is true, correct, and complete to the best of my knowledge. I understand that any false information may result in rejection or cancellation of Training Partner empanelment by NIELIT.</span>
+      </label>
+    </div>
+  </div>
+  <div class="nav-bar">
+    <button type="button" class="btn btn-prev" onclick="goPrev(5)">&#8592; Back</button>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span class="draft-saved-msg" id="dm5">&#10003; Draft Saved!</span>
+      <button type="button" class="btn btn-draft" onclick="saveDraft(5)">&#128190; Save Draft</button>
+      <button type="submit" class="btn btn-submit">&#128196; Submit Application</button>
+    </div>
+  </div>
+</div>
+
+</form>
+</div><!-- /.form-card -->
+
+<div style="text-align:center;margin-top:14px;font-size:12px;color:rgba(255,255,255,0.65);text-shadow:0 1px 4px rgba(0,0,0,0.4)">
+  Already registered? <a href="tp_login.php" style="color:#80c4ff;font-weight:600">Login here</a> &bull;
+  Help: <a href="mailto:tp@nielit.gov.in" style="color:#80c4ff">tp@nielit.gov.in</a> &bull; 1800-XXX-XXXX (Toll Free)
+</div>
+
+<?php endif; ?>
+</div><!-- /.wizard-wrap -->
+
 <footer class="site-footer">
-    <div style="margin-bottom:12px;">
-        <strong style="color:rgba(255,255,255,0.9);">NIELIT TPS</strong> &mdash; National Institute of Electronics &amp; Information Technology<br>
-        Ministry of Electronics &amp; Information Technology, Government of India<br>
-        <small>A-Block, CGO Complex, Lodhi Road, New Delhi &mdash; 110 003</small>
-    </div>
-    <div>
-        <a href="#">Privacy Policy</a> &nbsp;|&nbsp;
-        <a href="#">Terms &amp; Conditions</a> &nbsp;|&nbsp;
-        <a href="#">Disclaimer</a> &nbsp;|&nbsp;
-        <a href="#">Sitemap</a> &nbsp;|&nbsp;
-        <a href="#">RTI</a>
-    </div>
-    <div style="margin-top:8px;font-size:10.5px;color:rgba(255,255,255,0.38);">
-        &copy; <?= date('Y') ?> NIELIT. All Rights Reserved. &nbsp;|&nbsp; Last Updated: <?= date('d M Y') ?>
-    </div>
+  &copy; <?= date('Y') ?> NIELIT — National Institute of Electronics &amp; Information Technology<br>
+  Ministry of Electronics &amp; Information Technology, Government of India<br>
+  <a href="#">Privacy Policy</a> &bull; <a href="#">Terms of Use</a> &bull; <a href="#">Accessibility</a> &bull; <a href="#">Sitemap</a>
 </footer>
 
+</div><!-- /.page-wrapper -->
+
+<!-- ══════════════════════════════════════
+     3D BACKGROUND SCRIPT (WebGL/Canvas)
+══════════════════════════════════════ -->
 <script>
-/* ═══════════════════════════════════
-   MULTI-STEP NAVIGATION
-═══════════════════════════════════ */
-let cur = 0;
-const steps   = document.getElementsByClassName('form-step');
-const total   = steps.length;
-const labels  = ['Account & Legal','Faculty & Infra','Financials','Documents','Review'];
+(function(){
+  var canvas = document.getElementById('bgCanvas');
+  var ctx = canvas.getContext('2d');
+  var W, H, nodes = [], lines = [], particles = [];
+  var mouse = {x: -9999, y: -9999};
 
-function showStep(n) {
-    for (let i = 0; i < total; i++) steps[i].classList.remove('active');
-    steps[n].classList.add('active');
-    document.getElementById('prevBtn').style.display = (n === 0) ? 'none' : 'inline-flex';
-    document.getElementById('nextBtn').style.display = (n === total - 1) ? 'none' : 'flex';
-    updateProgress(n);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    if (n === total - 1) fillReview();
-}
+  function resize(){
+    W = canvas.width  = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+  window.addEventListener('resize', resize);
+  window.addEventListener('mousemove', function(e){ mouse.x = e.clientX; mouse.y = e.clientY; });
+  resize();
 
-function stepNav(dir) {
-    if (dir === 1 && !validateStep()) return;
-    cur += dir;
-    if (cur < 0) cur = 0;
-    if (cur >= total) cur = total - 1;
-    showStep(cur);
-}
-
-function jumpTo(n) {
-    cur = n;
-    showStep(cur);
-}
-
-function validateStep() {
-    let ok = true;
-    const inputs = steps[cur].querySelectorAll('input[required], select[required]');
-    inputs.forEach(function(el) {
-        if (!el.checkValidity()) { el.reportValidity(); ok = false; }
+  // ─ Nodes (floating 3D-looking spheres / dots)
+  var NODE_COUNT = 55;
+  for(var i=0;i<NODE_COUNT;i++){
+    var depth = 0.2 + Math.random() * 0.8; // simulate Z
+    nodes.push({
+      x: Math.random()*W,
+      y: Math.random()*H,
+      vx: (Math.random()-0.5)*0.4,
+      vy: (Math.random()-0.5)*0.4,
+      depth: depth,
+      r: depth * 4 + 1,
+      hue: 200 + Math.random()*40,
+      alpha: depth * 0.7 + 0.1,
+      pulse: Math.random()*Math.PI*2,
+      pulseSpeed: 0.008 + Math.random()*0.012,
     });
-    return ok;
-}
+  }
 
-function updateProgress(n) {
-    const pct = (n / (total - 1)) * 100;
-    document.getElementById('stepsFill').style.width = pct + '%';
-    for (let i = 0; i < total; i++) {
-        const c = document.getElementById('sc' + i);
-        const l = document.getElementById('sl' + i);
-        c.className = 'step-circle';
-        l.className = 'step-lbl';
-        if (i < n)  { c.classList.add('done');   c.innerHTML = '&#10003;'; }
-        else if (i === n) { c.classList.add('active'); l.classList.add('active'); c.innerHTML = i + 1; }
-        else { c.innerHTML = i + 1; }
+  // ─ Floating particles (small sparkles)
+  for(var j=0;j<80;j++){
+    particles.push({
+      x: Math.random()*W,
+      y: Math.random()*H,
+      size: Math.random()*1.8 + 0.4,
+      speed: 0.2 + Math.random()*0.6,
+      alpha: Math.random()*0.5 + 0.1,
+      drift: (Math.random()-0.5)*0.3,
+    });
+  }
+
+  // ─ 3D grid lines (perspective floor)
+  var GRID_LINES = 16;
+  var gridAngle = 0;
+
+  function drawGrid(){
+    var cx = W/2, horizon = H*0.45;
+    var vanishY = horizon;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(0,100,200,0.06)';
+    ctx.lineWidth = 1;
+
+    // Vertical lines (converge to vanishing point)
+    for(var i=0;i<=GRID_LINES;i++){
+      var t = i/GRID_LINES;
+      var bx = W * t;
+      ctx.beginPath();
+      ctx.moveTo(bx, H);
+      ctx.lineTo(cx + (bx - cx)*0.02, vanishY);
+      ctx.stroke();
     }
+    // Horizontal lines (spaced by perspective)
+    for(var j=0;j<12;j++){
+      var p = Math.pow((j+1)/12, 1.8);
+      var y = vanishY + (H - vanishY) * p;
+      var spread = 1 - (y - vanishY)/(H - vanishY);
+      var lx = cx - (cx * (1-spread*0.98));
+      var rx = cx + (cx * (1-spread*0.98));
+      ctx.beginPath();
+      ctx.moveTo(lx, y);
+      ctx.lineTo(rx, y);
+      ctx.globalAlpha = 0.04 + p*0.06;
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+    ctx.restore();
+  }
+
+  function drawNodes(){
+    // Draw connections
+    for(var a=0;a<nodes.length;a++){
+      for(var b=a+1;b<nodes.length;b++){
+        var na=nodes[a], nb=nodes[b];
+        var dx=na.x-nb.x, dy=na.y-nb.y;
+        var dist=Math.sqrt(dx*dx+dy*dy);
+        var maxDist = 140;
+        if(dist<maxDist){
+          var alpha = (1-dist/maxDist)*0.22*((na.depth+nb.depth)/2);
+          ctx.save();
+          ctx.globalAlpha=alpha;
+          var grad=ctx.createLinearGradient(na.x,na.y,nb.x,nb.y);
+          grad.addColorStop(0,'hsl('+na.hue+',80%,60%)');
+          grad.addColorStop(1,'hsl('+nb.hue+',80%,60%)');
+          ctx.strokeStyle=grad;
+          ctx.lineWidth=na.depth*1.2;
+          ctx.beginPath();
+          ctx.moveTo(na.x,na.y);
+          ctx.lineTo(nb.x,nb.y);
+          ctx.stroke();
+          ctx.restore();
+        }
+      }
+    }
+
+    // Draw nodes
+    for(var i=0;i<nodes.length;i++){
+      var n=nodes[i];
+      n.pulse+=n.pulseSpeed;
+      var pulseR = n.r + Math.sin(n.pulse)*1.2;
+
+      // Mouse repulsion
+      var mdx=n.x-mouse.x, mdy=n.y-mouse.y;
+      var mdist=Math.sqrt(mdx*mdx+mdy*mdy);
+      if(mdist<120){
+        n.vx += mdx/mdist*0.3;
+        n.vy += mdy/mdist*0.3;
+      }
+
+      n.x += n.vx; n.y += n.vy;
+      n.vx *= 0.99; n.vy *= 0.99;
+      if(n.x<-20) n.x=W+20;
+      if(n.x>W+20) n.x=-20;
+      if(n.y<-20) n.y=H+20;
+      if(n.y>H+20) n.y=-20;
+
+      // Glow
+      ctx.save();
+      var grd=ctx.createRadialGradient(n.x,n.y,0,n.x,n.y,pulseR*3.5);
+      grd.addColorStop(0,'hsla('+n.hue+',90%,70%,'+n.alpha+')');
+      grd.addColorStop(0.5,'hsla('+n.hue+',80%,50%,'+(n.alpha*0.3)+')');
+      grd.addColorStop(1,'hsla('+n.hue+',70%,40%,0)');
+      ctx.fillStyle=grd;
+      ctx.beginPath();
+      ctx.arc(n.x,n.y,pulseR*3.5,0,Math.PI*2);
+      ctx.fill();
+
+      // Core
+      ctx.beginPath();
+      ctx.arc(n.x,n.y,pulseR,0,Math.PI*2);
+      var core=ctx.createRadialGradient(n.x-pulseR*0.3,n.y-pulseR*0.3,0,n.x,n.y,pulseR);
+      core.addColorStop(0,'hsla('+n.hue+',100%,90%,'+(n.alpha+0.3)+')');
+      core.addColorStop(1,'hsla('+n.hue+',80%,55%,'+n.alpha+')');
+      ctx.fillStyle=core;
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  function drawParticles(){
+    for(var i=0;i<particles.length;i++){
+      var p=particles[i];
+      p.y -= p.speed;
+      p.x += p.drift;
+      if(p.y < -5){ p.y=H+5; p.x=Math.random()*W; }
+      ctx.save();
+      ctx.globalAlpha=p.alpha*(0.5+0.5*Math.sin(Date.now()*0.001+i));
+      ctx.fillStyle='rgba(140,200,255,1)';
+      ctx.beginPath();
+      ctx.arc(p.x,p.y,p.size,0,Math.PI*2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  // Nebula / atmosphere blobs
+  function drawAtmosphere(){
+    var blobs=[
+      {x:W*0.15,y:H*0.25,r:W*0.28,h:210,s:0.06},
+      {x:W*0.85,y:H*0.55,r:W*0.32,h:190,s:0.05},
+      {x:W*0.5, y:H*0.8, r:W*0.25,h:170,s:0.04},
+    ];
+    for(var i=0;i<blobs.length;i++){
+      var b=blobs[i];
+      var g=ctx.createRadialGradient(b.x,b.y,0,b.x,b.y,b.r);
+      g.addColorStop(0,'hsla('+b.h+',70%,25%,'+b.s+')');
+      g.addColorStop(1,'hsla('+b.h+',50%,10%,0)');
+      ctx.save();
+      ctx.fillStyle=g;
+      ctx.beginPath();
+      ctx.arc(b.x,b.y,b.r,0,Math.PI*2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  function draw(){
+    // Deep space background
+    ctx.fillStyle='#010e1e';
+    ctx.fillRect(0,0,W,H);
+
+    drawAtmosphere();
+    drawGrid();
+    drawParticles();
+    drawNodes();
+
+    // Vignette
+    var vig=ctx.createRadialGradient(W/2,H/2,H*0.3,W/2,H/2,H*0.9);
+    vig.addColorStop(0,'rgba(0,0,0,0)');
+    vig.addColorStop(1,'rgba(0,5,20,0.55)');
+    ctx.fillStyle=vig;
+    ctx.fillRect(0,0,W,H);
+
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+// ── WIZARD JS ──
+var cur=1, tot=5;
+var pcts={1:10,2:30,3:50,4:70,5:90};
+
+function updateUI(s){
+  document.querySelectorAll('.step-panel').forEach(function(p){p.classList.remove('active')});
+  document.getElementById('panel'+s).classList.add('active');
+  for(var i=1;i<=tot;i++){
+    var c=document.getElementById('sc'+i),l=document.getElementById('sl'+i);
+    c.className='step-circle'; l.className='step-label';
+    if(i<s){c.classList.add('done');l.classList.add('done');c.innerHTML='&#10003;'}
+    else if(i===s){c.classList.add('active');l.classList.add('active');c.innerHTML=i}
+    else{c.innerHTML=i}
+  }
+  document.getElementById('progressFill').style.width=pcts[s]+'%';
+  document.getElementById('progressPct').textContent=pcts[s]+'%';
+  window.scrollTo({top:0,behavior:'smooth'});
 }
 
-/* ═══════════════════════════════════
-   LEGAL PANEL TOGGLE
-═══════════════════════════════════ */
-function switchLegal(val) {
-    document.querySelectorAll('.legal-panel').forEach(function(p) { p.classList.remove('show'); });
-    var t = document.getElementById('lp_' + val);
-    if (t) t.classList.add('show');
-    document.querySelectorAll('.radio-pill').forEach(function(p) { p.classList.remove('on'); });
-    var r = document.querySelector('.radio-pill input[value="' + val + '"]');
-    if (r) r.closest('.radio-pill').classList.add('on');
-    document.getElementById('legalHidden').value = val;
+function goNext(f){cur=Math.min(f+1,tot);updateUI(cur)}
+function goPrev(f){cur=Math.max(f-1,1);updateUI(cur)}
+
+function saveDraft(step){
+  var fd=new FormData(document.getElementById('tpForm'));
+  fd.set('action','save_draft');
+  fetch(window.location.href,{method:'POST',body:fd})
+    .then(function(r){return r.json()})
+    .then(function(d){
+      if(d.status==='ok'){
+        var m=document.getElementById('dm'+step);
+        if(m){m.style.display='inline';setTimeout(function(){m.style.display='none'},3000)}
+      }
+    }).catch(function(){alert('Draft save failed. Try again.')});
 }
 
-document.querySelectorAll('.radio-pill').forEach(function(pill) {
-    pill.addEventListener('click', function() {
-        var inp = this.querySelector('input[type=radio]');
-        if (inp) switchLegal(inp.value);
-    });
+function clearDraft(){
+  if(!confirm('Clear saved draft? This cannot be undone.'))return;
+  fetch(window.location.href,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'action=clear_draft'})
+    .then(function(){location.reload()});
+}
+
+function toggleLegal(){
+  document.querySelectorAll('.cond-block').forEach(function(e){e.classList.remove('visible')});
+  var s=document.querySelector('input[name="s9_legal_status"]:checked');
+  if(s){var b=document.getElementById('legal_'+s.value);if(b)b.classList.add('visible')}
+}
+
+document.addEventListener('DOMContentLoaded',function(){
+  <?php if(!empty($errors)): ?>updateUI(5);<?php else: ?>updateUI(1);<?php endif; ?>
+  var lc=document.querySelector('input[name="s9_legal_status"]:checked');
+  if(lc)toggleLegal();
 });
-
-/* ═══════════════════════════════════
-   REVIEW FILL
-═══════════════════════════════════ */
-function fillReview() {
-    var f = document.getElementById('signupForm');
-    function gv(name) { var el = f.querySelector('[name="' + name + '"]'); return el ? el.value : '—'; }
-    document.getElementById('rv_center_id').textContent = gv('center_id')  || '—';
-    document.getElementById('rv_inst_name').textContent = gv('inst_name')  || '—';
-    document.getElementById('rv_sig_name').textContent  = gv('sig_name')   || '—';
-    document.getElementById('rv_email').textContent     = gv('sig_email')  || '—';
-    document.getElementById('rv_mobile').textContent    = gv('sig_mobile') || '—';
-    document.getElementById('rv_state').textContent     = gv('state')      || '—';
-    var legal = document.querySelector('input[name="legal_status"]:checked');
-    document.getElementById('rv_legal').textContent = legal ? legal.value.replace('_', ' / ').toUpperCase() : '—';
-}
-
-/* Init */
-showStep(0);
 </script>
-
 </body>
 </html>
