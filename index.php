@@ -1,908 +1,490 @@
+<?php
+// Start a clean session
+session_name('NIELIT_LANDING');
+session_start();
+
+// Clear any existing sessions when coming to the landing page
+session_destroy();
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NIELIT Bhubaneswar | Ministry of Electronics & IT</title>
-
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
+    <title>Training Partner System - NIELIT Bhubaneswar</title>
     
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <?php 
-    require_once __DIR__ . '/config/config.php';
-    require_once __DIR__ . '/includes/theme_loader.php';
-    require_once __DIR__ . '/includes/navigation_helper.php';
-    
-    // Load active theme
-    $active_theme = loadActiveTheme($conn);
-    $theme_logo = getThemeLogo($active_theme);
-    
-    // Load navigation menu from database (with fallback to hardcoded menu)
-    $navigation_menu_html = '';
-    if (navigationMenuTableExists($conn)) {
-        $menu_items = getNavigationMenu($conn);
-        $current_page = basename($_SERVER['PHP_SELF']);
-        $navigation_menu_html = renderNavigationMenu($menu_items, $current_page);
-    }
-    
-    // Use fallback if no menu items found
-    if (empty($navigation_menu_html)) {
-        $navigation_menu_html = getFallbackNavigationMenu();
-    }
-    
-    // Inject theme CSS
-    injectThemeCSS($active_theme);
-    
-    // Load homepage content sections from database with caching
-    // Cache Strategy:
-    // - Cache duration: 1 hour (3600 seconds)
-    // - Cache storage: PHP session
-    // - Cache key: 'homepage_content_cache'
-    // - Cache invalidation: Automatic after 1 hour, or manual via cache clearing (Task 15.4)
-    // - Performance benefit: Reduces database queries on every page load
-    $banners = [];
-    $announcements_content = [];
-    $featured_courses = [];
-    $text_blocks = [];
-    $image_blocks = [];
-    
-    // Cache configuration
-    $cache_duration = 3600; // 1 hour in seconds
-    $cache_key = 'homepage_content_cache';
-    $cache_time_key = 'homepage_content_cache_time';
-    
-    // Check if cached content exists and is not expired
-    $use_cache = false;
-    if (isset($_SESSION[$cache_key]) && isset($_SESSION[$cache_time_key])) {
-        $cache_age = time() - $_SESSION[$cache_time_key];
-        if ($cache_age < $cache_duration) {
-            $use_cache = true;
-        }
-    }
-    
-    if ($use_cache) {
-        // Use cached content
-        $cached_data = $_SESSION[$cache_key];
-        $banners = $cached_data['banners'];
-        $announcements_content = $cached_data['announcements_content'];
-        $featured_courses = $cached_data['featured_courses'];
-        $text_blocks = $cached_data['text_blocks'];
-        $image_blocks = $cached_data['image_blocks'];
-    } else {
-        // Cache is invalid or doesn't exist - query database
-        try {
-            // Query homepage_content table for active sections ordered by display_order
-            $content_sql = "SELECT * FROM homepage_content WHERE is_active = 1 ORDER BY display_order ASC";
-            $content_result = $conn->query($content_sql);
-            
-            if ($content_result) {
-                // Group sections by type for easier rendering
-                while ($section = $content_result->fetch_assoc()) {
-                    switch ($section['section_type']) {
-                        case 'banner':
-                            $banners[] = $section;
-                            break;
-                        case 'announcement':
-                            $announcements_content[] = $section;
-                            break;
-                        case 'featured_course':
-                            $featured_courses[] = $section;
-                            break;
-                        case 'text_block':
-                            $text_blocks[] = $section;
-                            break;
-                        case 'image_block':
-                            $image_blocks[] = $section;
-                            break;
-                    }
-                }
-            }
-            
-            // Store results in cache
-            $_SESSION[$cache_key] = [
-                'banners' => $banners,
-                'announcements_content' => $announcements_content,
-                'featured_courses' => $featured_courses,
-                'text_blocks' => $text_blocks,
-                'image_blocks' => $image_blocks
-            ];
-            $_SESSION[$cache_time_key] = time();
-            
-        } catch (Exception $e) {
-            // Log error and continue with empty arrays (fallback to hardcoded content)
-            error_log("Homepage content query failed: " . $e->getMessage());
-        }
-    }
-    ?>
+    <!-- D3.js Library -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
 
     <style>
         :root {
-            --primary-blue: var(--primary-color, #0d47a1); /* Use theme primary color */
-            --secondary-blue: var(--secondary-color, #1565c0); /* Use theme secondary color */
-            --accent-gold: var(--accent-color, #ffc107); /* Use theme accent color */
-            --light-bg: #f8f9fa;
-            --text-dark: #212529;
-            --text-muted: #6c757d;
+            /* Premium Color Palette */
+            --primary: #155E75;        /* Official NIELIT Blue */
+            --primary-light: #0284C7;  
+            --primary-bg: #EFF6FF;     
+            --candidate: #059669;      
+            --candidate-bg: #ECFDF5;
+            --tp: #0D9488;
+            --tp-bg: #CCFBF1;
+            --text-dark: #0F172A;
+            --text-muted: #475569;
+            --bg-body: #F8FAFC;
+            --surface: #FFFFFF;
+            --border: #E2E8F0;
+            --gold: #D97706;
+            --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 10px 30px -5px rgba(0, 0, 0, 0.08);
+            --radius-lg: 20px;
         }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: var(--light-bg);
+            font-family: 'Plus Jakarta Sans', sans-serif;
             color: var(--text-dark);
-            padding-top: 0; /* Bootstrap 5 navbar handling */
-        }
-
-        h1, h2, h3, h4, h5, h6 {
-            font-family: 'Poppins', sans-serif;
-        }
-
-        /* ===== TOP BAR (Gov Info) ===== */
-        .top-bar {
-            background-color: #fff;
-            border-bottom: 1px solid #e9ecef;
-            padding: 8px 0;
-            font-size: 0.85rem;
-        }
-        
-        .gov-logos img {
-            height: 45px;
-            width: auto;
-        }
-
-        .ministry-text {
-            font-weight: 600;
-            color: var(--text-dark);
-            line-height: 1.2;
-        }
-
-        /* ===== MAIN NAVBAR ===== */
-        .navbar {
-            background-color: var(--primary-blue);
-            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
-            padding: 0.5rem 1rem;
-        }
-
-        .navbar-brand {
-            font-weight: 700;
-            font-size: 1.2rem;
-            color: #fff !important;
-        }
-
-        .nav-link {
-            color: rgba(255,255,255,0.9) !important;
-            font-weight: 500;
-            margin: 0 5px;
-            transition: all 0.3s ease;
-            position: relative;
-        }
-
-        .nav-link:hover, .nav-link.active {
-            color: var(--accent-gold) !important;
-        }
-
-        .dropdown-menu {
-            border: none;
-            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
-            border-radius: 8px;
-            margin-top: 10px;
-        }
-
-        .dropdown-item:hover {
-            background-color: #e3f2fd;
-            color: var(--primary-blue);
-        }
-
-        /* ===== NOTICE TICKER ===== */
-        .notice-bar {
-            background: linear-gradient(90deg, #1565c0 0%, #42a5f5 100%);
-            color: white;
-            padding: 10px 0;
-            overflow: hidden;
-            white-space: nowrap;
-            position: relative;
-        }
-
-        .notice-content {
-            display: inline-block;
-            padding-left: 100%;
-            animation: ticker 25s linear infinite;
-            font-weight: 500;
-        }
-
-        @keyframes ticker {
-            0% { transform: translate3d(0, 0, 0); }
-            100% { transform: translate3d(-100%, 0, 0); }
-        }
-
-        /* ===== HERO CAROUSEL ===== */
-        .carousel-item {
-            height: 500px;
-        }
-        
-        .carousel-item img {
-            height: 100%;
-            object-fit: cover;
-            filter: brightness(0.9); /* Slight dim for better text readability if added */
-        }
-
-        /* ===== FEATURE CARDS ===== */
-        .feature-card {
-            background: #fff;
-            border-radius: 12px;
-            padding: 25px;
-            height: 100%;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-            border: 1px solid #eee;
-        }
-
-        .feature-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-            border-color: var(--primary-blue);
-        }
-
-        .feature-icon {
-            font-size: 2rem;
-            color: var(--secondary-blue);
-            margin-bottom: 15px;
-        }
-
-        /* ===== FOOTER ===== */
-        footer {
-            background-color: #1a202c; /* Darker modern footer */
-            color: #cbd5e0;
-            font-size: 0.95rem;
-        }
-
-        footer h5 {
-            color: #fff;
-            font-weight: 600;
-            margin-bottom: 1.5rem;
-            position: relative;
-        }
-        
-        footer h5::after {
-            content: '';
-            position: absolute;
-            left: 0;
-            bottom: -8px;
-            width: 40px;
-            height: 3px;
-            background-color: var(--accent-gold);
-        }
-
-        footer a {
-            color: #cbd5e0;
-            text-decoration: none;
-            transition: color 0.2s;
-            display: block;
-            margin-bottom: 8px;
-        }
-
-        footer a:hover {
-            color: var(--accent-gold);
-            padding-left: 5px;
-        }
-
-        .copyright-bar {
-            background-color: #111827;
-            padding: 15px 0;
-            border-top: 1px solid #2d3748;
-        }
-
-        /* ===== LEVEL INDICATORS ===== */
-        .level-indicator {
-            animation: fadeInDown 0.6s ease-out;
-        }
-
-        @keyframes fadeInDown {
-            from {
-                opacity: 0;
-                transform: translateY(-20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        /* ===== INFO DETAIL CARDS (LEVEL 3) ===== */
-        .info-detail-card {
-            background: #fff;
-            border-radius: 16px;
-            padding: 32px;
-            height: 100%;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-            border: 1px solid #e9ecef;
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .info-detail-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 4px;
-            background: linear-gradient(90deg, var(--primary-blue) 0%, var(--secondary-blue) 100%);
-        }
-
-        .info-detail-card:hover {
-            transform: translateY(-8px);
-            box-shadow: 0 12px 24px rgba(0,0,0,0.15);
-            border-color: var(--primary-blue);
-        }
-
-        .card-icon-header {
-            width: 70px;
-            height: 70px;
-            background: linear-gradient(135deg, var(--primary-blue) 0%, var(--secondary-blue) 100%);
-            border-radius: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 20px;
-            box-shadow: 0 8px 16px rgba(13, 71, 161, 0.3);
-        }
-
-        .card-icon-header i {
-            font-size: 32px;
-            color: white;
-        }
-
-        .info-detail-card .card-title {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--primary-blue);
-            margin-bottom: 16px;
-        }
-
-        .info-detail-card .card-text {
-            color: var(--text-muted);
-            line-height: 1.7;
-            margin-bottom: 20px;
-            font-size: 0.95rem;
-        }
-
-        .detail-list {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
-
-        .detail-list li {
-            padding: 10px 0;
-            color: var(--text-dark);
-            font-size: 0.9rem;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            border-bottom: 1px solid #f1f5f9;
-        }
-
-        .detail-list li:last-child {
-            border-bottom: none;
-        }
-
-        .detail-list i {
-            color: #10b981;
-            font-size: 1rem;
-        }
-
-        /* ===== QUICK LINKS GRID ===== */
-        .quick-links-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-            margin-top: 20px;
-        }
-
-        .quick-link-btn {
-            background: linear-gradient(135deg, #f8fafc 0%, #e3f2fd 100%);
-            border: 2px solid #e2e8f0;
-            border-radius: 10px;
-            padding: 14px 10px;
-            text-align: center;
-            text-decoration: none;
-            color: var(--primary-blue);
-            font-weight: 600;
-            font-size: 0.85rem;
-            transition: all 0.3s ease;
+            background-color: var(--bg-body);
+            min-height: 100vh; 
             display: flex;
             flex-direction: column;
-            align-items: center;
-            gap: 6px;
+            overflow-x: hidden;
         }
 
-        .quick-link-btn i {
-            font-size: 1.3rem;
-            margin-bottom: 4px;
+        /* HEADER & NAV */
+        .top-header { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); z-index: 100; position: relative; width: 100%; }
+        .header-container { display: flex; justify-content: space-between; align-items: center; max-width: 1440px; margin: 0 auto; padding: 12px 40px; width: 100%; }
+        .header-left { display: flex; align-items: center; gap: 15px; }
+        .nielit-logo { height: 55px; width: auto; object-fit: contain; }
+        .header-titles { display: flex; flex-direction: column; justify-content: center; }
+        .hindi-title { font-family: 'Noto Sans Devanagari', sans-serif; font-size: 15px; color: var(--primary); font-weight: 700; line-height: 1.2; }
+        .eng-title { font-size: 13px; font-weight: 600; color: var(--text-dark); margin-top: 2px;}
+        .header-right { display: flex; align-items: center; gap: 15px; text-align: right; }
+        .ministry-text { display: flex; flex-direction: column; font-size: 11px; color: var(--text-muted); font-weight: 600; }
+        .ministry-text strong { font-size: 13px; color: var(--text-dark); }
+        .emblem { height: 50px; width: auto; object-fit: contain; margin-left: 5px; }
+
+        .main-nav { background: var(--primary); box-shadow: var(--shadow-sm); z-index: 99; position: relative; width: 100%; }
+        .nav-container { display: flex; justify-content: space-between; align-items: center; max-width: 1440px; margin: 0 auto; padding: 0 40px; width: 100%; flex-wrap: wrap; }
+        .nav-home-btn { color: #FFFFFF; text-decoration: none; font-weight: 700; font-size: 15px; display: flex; align-items: center; gap: 10px; padding: 15px 0; transition: color 0.3s; }
+        .nav-home-btn:hover { color: #E0F2FE;}
+        .nav-home-btn i { font-size: 18px; }
+        .mobile-menu-btn { display: none; background: none; border: none; color: #FFFFFF; font-size: 24px; cursor: pointer; padding: 10px 0; }
+        .nav-links { display: flex; height: 100%; align-items: center; }
+        .nav-link { color: #E0F2FE; text-decoration: none; font-weight: 600; font-size: 14px; padding: 16px 20px; transition: 0.3s; display: flex; align-items: center; gap: 8px; border-radius: 8px; margin: 0 2px;}
+        .nav-link:hover { color: #FFFFFF; background: rgba(255, 255, 255, 0.15); }
+        .nav-btn-highlight { color: #fef08a !important; font-weight: 700; }
+        .nav-btn-highlight:hover { background: rgba(254, 240, 138, 0.1) !important; color: #fde047 !important; }
+
+        .ticker-wrap { background: var(--text-dark); color: white; padding: 8px 0; overflow: hidden; position: relative; z-index: 10; font-size: 13px; font-weight: 600; display: flex; align-items: center; }
+        .ticker-label { background: var(--gold); color: white; padding: 3px 12px; border-radius: 4px; font-weight: 800; margin: 0 15px; position: relative; z-index: 2; white-space: nowrap; font-size: 11px; letter-spacing: 0.5px; text-transform: uppercase;}
+        .ticker-move { display: inline-block; white-space: nowrap; animation: ticker 40s linear infinite; padding-left: 20px;}
+        @keyframes ticker { 0% { transform: translateX(100vw); } 100% { transform: translateX(-100%); } }
+
+        /* AMBIENT BG */
+        .ambient-bg { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1; pointer-events: none; background: radial-gradient(circle at 50% 0%, #E0F2FE 0%, #F8FAFC 70%); perspective: 1000px; }
+        .shape { position: absolute; background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.3)); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 1); box-shadow: 0 15px 35px rgba(21, 94, 117, 0.05), inset 0 0 20px rgba(255, 255, 255, 0.5); animation: float-3d 25s infinite linear; }
+        .cube { width: 180px; height: 180px; border-radius: 35px; top: 15%; left: 5%; animation-duration: 35s; }
+        .ring { width: 260px; height: 260px; border-radius: 50%; border: 40px solid rgba(255,255,255,0.5); top: 50%; right: 2%; animation-duration: 40s; animation-direction: reverse; background: transparent; }
+        @keyframes float-3d { 0% { transform: translateY(0) rotateX(0deg) rotateY(0deg) rotateZ(0deg); } 50% { transform: translateY(-30px) rotateX(180deg) rotateY(90deg) rotateZ(45deg); } 100% { transform: translateY(0) rotateX(360deg) rotateY(180deg) rotateZ(90deg); } }
+
+        /* DASHBOARD LAYOUT CSS */
+        .main-showcase { max-width: 1440px; margin: 0 auto; width: 100%; padding: 50px 40px 30px 40px; z-index: 10; }
+        .hero-top { text-align: center; max-width: 900px; margin: 0 auto 40px auto; animation: fadeUp 0.8s ease both; }
+        
+        .system-badge { display: inline-flex; align-items: center; gap: 8px; background: white; border: 1px solid var(--border); padding: 8px 18px; border-radius: 50px; font-size: 13px; font-weight: 800; color: var(--candidate); box-shadow: var(--shadow-sm); margin-bottom: 25px; }
+        .live-dot { width: 8px; height: 8px; background: var(--candidate); border-radius: 50%; box-shadow: 0 0 12px var(--candidate); animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(1.3); } 100% { opacity: 1; transform: scale(1); } }
+        
+        .hero-title { font-size: 46px; font-weight: 800; color: var(--text-dark); letter-spacing: -1px; line-height: 1.15; margin-bottom: 18px;}
+        .hero-title span { color: var(--primary); }
+        .hero-sub { font-size: 16px; color: var(--text-muted); font-weight: 500; line-height: 1.6; margin-bottom: 30px; padding: 0 20px;}
+        
+        .stats-row { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap;}
+        .stat { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(10px); padding: 18px 30px; border-radius: 20px; border: 1px solid white; box-shadow: var(--shadow-sm); transition: transform 0.3s;}
+        .stat:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+        .stat-num { font-size: 28px; font-weight: 800; color: var(--text-dark); line-height: 1;}
+        .stat-num span { color: var(--primary); }
+        .stat-label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; font-weight: 800; letter-spacing: 0.5px; margin-top: 6px;}
+
+        /* THE 3-COLUMN ROW (Perfectly Aligned) */
+        .dashboard-row { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr 380px; 
+            gap: 30px; 
+            align-items: stretch; /* Forces equal height */
+            animation: fadeUp 0.8s ease both; 
+            animation-delay: 0.2s; 
         }
 
-        .quick-link-btn:hover {
-            background: linear-gradient(135deg, var(--primary-blue) 0%, var(--secondary-blue) 100%);
-            color: white;
-            transform: translateY(-3px);
-            box-shadow: 0 6px 16px rgba(13, 71, 161, 0.3);
-            border-color: var(--primary-blue);
+        .map-box { 
+            background: rgba(255, 255, 255, 0.85); 
+            backdrop-filter: blur(20px); 
+            border: 1px solid rgba(255,255,255,0.8); 
+            padding: 25px; 
+            border-radius: 24px; 
+            box-shadow: var(--shadow-md); 
+            text-align: center; 
+            display: flex; 
+            flex-direction: column; 
+            height: 100%; /* Fill the grid height */
+        }
+        .map-box h4 { margin-top: 20px; font-size: 20px; font-weight: 800; color: var(--text-dark); }
+        .map-box p { font-size: 14px; color: var(--text-muted); font-weight: 500; margin-top: 5px; }
+        
+        /* Map specific styling */
+        .map-box.odisha-highlight { background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(224, 242, 254, 0.6)); border-color: rgba(2, 132, 199, 0.1); }
+        .map-box.odisha-highlight h4 { color: var(--primary); }
+        .district-odisha { fill: #bae6fd; stroke: #ffffff; stroke-width: 0.8px; transition: all 0.3s ease; cursor: pointer; } 
+        .district-odisha:hover { fill: #0284C7; stroke: #0F172A; stroke-width: 1.5px; } 
+
+        .map-box.chhattisgarh-highlight { background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(204, 251, 241, 0.6)); border-color: rgba(13, 148, 136, 0.1); }
+        .map-box.chhattisgarh-highlight h4 { color: var(--tp); }
+        .district-chhattisgarh { fill: #a7f3d0; stroke: #ffffff; stroke-width: 0.8px; transition: all 0.3s ease; cursor: pointer; } 
+        .district-chhattisgarh:hover { fill: #059669; stroke: #0F172A; stroke-width: 1.5px; }
+
+        .svg-container { 
+            width: 100%; 
+            flex-grow: 1; /* Pushes the text to the bottom uniformly */
+            min-height: 280px; 
+            background: rgba(255, 255, 255, 0.7); 
+            border-radius: 16px; 
+            border: 1px solid rgba(255,255,255,0.5); 
+            position: relative; 
+            overflow: hidden; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
         }
 
-        /* ===== ENHANCED FEATURE CARDS ===== */
-        .feature-card {
-            position: relative;
-            overflow: hidden;
-        }
+        /* Error Message Styling for maps */
+        .map-error { color: #dc2626; font-size: 13px; font-weight: 600; text-align: center; padding: 20px; line-height: 1.5; }
+        .map-error i { display: block; font-size: 28px; margin-bottom: 10px; color: #ef4444; }
 
-        .feature-card::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 3px;
-            background: linear-gradient(90deg, var(--primary-blue) 0%, var(--accent-gold) 100%);
-            transform: scaleX(0);
-            transition: transform 0.3s ease;
-        }
+        /* Tooltip Styling */
+        .map-tooltip { position: absolute; opacity: 0; background: rgba(15, 23, 42, 0.95); color: #ffffff; padding: 10px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; pointer-events: none; transition: opacity 0.2s ease; box-shadow: 0 4px 15px rgba(0,0,0,0.2); z-index: 1000; white-space: nowrap; border: 1px solid rgba(255,255,255,0.1);}
 
-        .feature-card:hover::after {
-            transform: scaleX(1);
+        /* Login Card */
+        .login-section { display: flex; flex-direction: column; width: 100%; height: 100%; }
+        .glass-login-card { 
+            background: rgba(255, 255, 255, 0.95); 
+            backdrop-filter: blur(25px); 
+            border: 1px solid rgba(255, 255, 255, 0.8); 
+            border-radius: 24px; 
+            padding: 35px 30px; 
+            box-shadow: var(--shadow-md); 
+            position: relative; 
+            overflow: hidden; 
+            height: 100%; 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: center; 
         }
+        .glass-login-card::before { content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 6px; background: linear-gradient(90deg, var(--primary), var(--primary-light)); }
+        .glass-login-card h2 { font-size: 24px; font-weight: 800; color: var(--text-dark); margin-bottom: 6px; text-align: center;}
+        .glass-login-card p { font-size: 14px; color: var(--text-muted); text-align: center; margin-bottom: 25px; font-weight: 500;}
+        
+        .form-group { margin-bottom: 18px; }
+        .form-group label { display: block; font-size: 13px; font-weight: 700; color: var(--text-muted); margin-bottom: 8px; }
+        .form-control { width: 100%; padding: 14px 16px; border: 1px solid var(--border); border-radius: 12px; font-family: inherit; font-size: 14px; background: #F8FAFC; transition: 0.3s; font-weight: 500;}
+        .form-control:focus { outline: none; border-color: var(--primary-light); box-shadow: 0 0 0 4px var(--primary-bg); background: white; }
+        
+        .btn-submit { width: 100%; padding: 16px; background: var(--primary); color: white; border: none; border-radius: 12px; font-weight: 800; font-size: 15px; cursor: pointer; transition: 0.3s; margin-top: 10px; box-shadow: 0 4px 15px rgba(2, 132, 199, 0.25); display: flex; justify-content: center; align-items: center; gap: 8px;}
+        .btn-submit:hover { background: var(--primary-light); transform: translateY(-2px); box-shadow: 0 8px 25px rgba(2, 132, 199, 0.35); }
+        
+        .form-footer { text-align: center; margin-top: 20px; font-size: 13px; font-weight: 600; color: var(--text-muted); }
+        .form-footer a { color: var(--primary-light); text-decoration: none; transition: 0.2s; }
+        .form-footer a:hover { color: var(--primary); text-decoration: underline; }
 
-        /* ===== MOBILE TWEAKS ===== */
-        @media (max-width: 768px) {
-            .carousel-item { height: 250px; }
-            .gov-logos { justify-content: center !important; margin-top: 10px; }
-            .text-header-group { text-align: center; }
-            .feature-card { text-align: center; }
-            
-            .info-detail-card {
-                padding: 24px;
-                margin-bottom: 20px;
-            }
-            
-            .card-icon-header {
-                width: 60px;
-                height: 60px;
-            }
-            
-            .card-icon-header i {
-                font-size: 28px;
-            }
-            
-            .quick-links-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .quick-link-btn {
-                padding: 16px;
-            }
+        /* PLATFORM CAPABILITIES SECTION */
+        .platform-details { max-width: 1440px; margin: 0 auto; width: 100%; padding: 20px 40px 60px 40px; z-index: 10; position: relative; animation: fadeUp 0.8s ease both; animation-delay: 0.4s; }
+        .section-title { font-size: 30px; font-weight: 800; text-align: center; margin-bottom: 10px; letter-spacing: -0.5px; color: var(--text-dark); }
+        
+        .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 25px; margin-top: 40px;}
+        .feature-box { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(15px); border: 1px solid white; padding: 30px; border-radius: 20px; box-shadow: var(--shadow-sm); display: flex; gap: 20px; transition: 0.3s; }
+        .feature-box:hover { background: #FFFFFF; transform: translateY(-5px); box-shadow: var(--shadow-md); }
+        .f-icon { width: 55px; height: 55px; border-radius: 14px; background: var(--primary-bg); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; box-shadow: inset 0 0 0 1px rgba(2,132,199,0.1);}
+        .f-content h3 { font-size: 18px; font-weight: 800; margin-bottom: 8px; color: var(--text-dark); }
+        .f-content p { font-size: 14px; color: var(--text-muted); line-height: 1.6; font-weight: 500;}
+
+        /* FOOTER */
+        .footer { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; padding: 25px 40px; background: white; border-top: 1px solid var(--border); font-size: 13px; font-weight: 600; color: var(--text-muted); z-index: 10; margin-top: auto; }
+        .footer-left { display: flex; flex-direction: column; gap: 6px; }
+        .credit-text { font-size: 12px; color: var(--primary-light); font-weight: 700; display: flex; align-items: center; gap: 6px; }
+        .footer-links { display: flex; gap: 25px; flex-wrap: wrap;}
+        .footer-links a { color: var(--text-muted); text-decoration: none; transition: 0.2s; }
+        .footer-links a:hover { color: var(--primary); }
+
+        /* ANIMATIONS & RESPONSIVE */
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+
+        @media (max-width: 1200px) { 
+            .dashboard-row { grid-template-columns: 1fr 1fr; } /* Maps side by side */
+            .login-section { grid-column: span 2; max-width: 500px; margin: 0 auto; height: auto;} /* Login centered below */
+            .glass-login-card { padding: 40px 30px; }
         }
+        @media (max-width: 992px) { .hero-title { font-size: 38px; } }
+        @media (max-width: 768px) { 
+            .header-container { flex-direction: column; gap: 15px; text-align: center; padding: 15px 20px; } 
+            .header-left, .header-right { flex-direction: column; align-items: center; justify-content: center; text-align: center;} 
+            .ministry-text { text-align: center; } 
+            .nav-container { padding: 10px 20px; } 
+            .mobile-menu-btn { display: block; } 
+            .nav-links { display: none; width: 100%; flex-direction: column; align-items: flex-start; padding-bottom: 15px; } 
+            .nav-links.active { display: flex; } 
+            .nav-link { width: 100%; padding: 12px 10px; justify-content: flex-start;} 
+            .dashboard-row { grid-template-columns: 1fr; } /* Stack everything */
+            .login-section { grid-column: span 1; }
+            .footer { flex-direction: column; gap: 15px; text-align: center; justify-content: center; } 
+            .footer-left { align-items: center; } 
+            .footer-links { justify-content: center; } 
+            .main-showcase, .platform-details { padding: 30px 20px; }
+        }
+        @media (max-width: 480px) { .hero-title { font-size: 32px; } .stat { min-width: 100%; padding: 15px; } .svg-container { min-height: 220px; } }
     </style>
 </head>
 <body>
-
-    <div class="top-bar">
-        <div class="container">
-            <div class="row align-items-center">
-                <div class="col-md-8 d-flex align-items-center justify-content-md-start justify-content-center text-header-group">
-                    <img src="<?php echo APP_URL . '/' . $theme_logo; ?>" alt="NIELIT Logo" class="me-3" style="height: 50px;">
-                    <div>
-                        <div class="fw-bold text-primary d-none d-sm-block">राष्ट्रीय इलेक्ट्रॉनिकी एवं सूचना प्रौद्योगिकी संस्थान, भुवनेश्वर</div>
-                        <div class="fw-bold text-dark">National Institute of Electronics & Information Technology, Bhubaneswar</div>
-                    </div>
-                </div>
-                <div class="col-md-4 d-flex justify-content-md-end justify-content-center gov-logos">
-                    <div class="text-end me-3 d-none d-lg-block">
-                        <small class="d-block fw-bold text-secondary">Ministry of Electronics & IT</small>
-                        <small class="d-block text-secondary">Government of India</small>
-                    </div>
-                    <img src="<?php echo APP_URL; ?>/assets/images/National-Emblem.png" alt="Gov India" style="height: 50px;">
-                </div>
-            </div>
-        </div>
+    
+    <div class="ambient-bg">
+        <div class="shape cube"></div>
+        <div class="shape ring"></div>
     </div>
 
-    <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
-        <div class="container">
-            <a class="navbar-brand" href="index.php">
-                <i class="fas fa-university me-2"></i> NIELIT
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
+    <!-- Header -->
+    <header class="top-header">
+        <div class="header-container">
+            <div class="header-left">
+                <img src="RR.png" alt="NIELIT Logo" class="nielit-logo">
+                <div class="header-titles">
+                    <span class="hindi-title">राष्ट्रीय इलेक्ट्रॉनिकी एवं सूचना प्रौद्योगिकी संस्थान, भुवनेश्वर</span>
+                    <span class="eng-title">National Institute of Electronics & Information Technology, Bhubaneswar</span>
+                </div>
+            </div>
+            <div class="header-right">
+                <div class="ministry-text">
+                    <strong>Ministry of Electronics & IT</strong> Government of India
+                </div>
+                <img src="image_7c2b82.png" alt="Government of India Emblem" class="emblem">
+            </div>
+        </div>
+    </header>
 
-            <div class="collapse navbar-collapse" id="mainNav">
-                <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
-                    <?php echo $navigation_menu_html; ?>
-                </ul>
+    <!-- Navigation -->
+    <nav class="main-nav">
+        <div class="nav-container">
+            <a href="index.php" class="nav-home-btn">
+                <i class="fas fa-layer-group"></i> NIELIT TPMS
+            </a>
+            <button class="mobile-menu-btn" onclick="toggleMobileMenu()">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div class="nav-links" id="navLinks">
+                <a href="public/courses.php" class="nav-link"><i class="fas fa-book"></i> Courses</a>
+                <a href="public/notices.php" class="nav-link"><i class="fas fa-bullhorn"></i> Public Notices</a>
+                <a href="public/contact.php" class="nav-link"><i class="fas fa-headset"></i> Contact Us</a>
+                <a href="tp/tp_signup.php" class="nav-link nav-btn-highlight"><i class="fas fa-user-plus"></i> Register Center</a>
             </div>
         </div>
     </nav>
 
-    <div class="notice-bar">
-        <div class="notice-content">
-            <span class="badge bg-warning text-dark me-2">NEW</span> 
-            Admissions Open! NIELIT Bhubaneswar offers NSQF-aligned courses with modern facilities. Visit our Balasore Extension Center today.
+    <!-- Ticker -->
+    <div class="ticker-wrap">
+        <div class="ticker-label">System Alerts</div>
+        <div class="ticker-move">
+            &bull; Registration for new Training Partners in Odisha and Chhattisgarh is now open. &bull; Existing partners must upload records via CSV before the deadline. &bull; Download operational guidelines from the Notices section.
         </div>
     </div>
 
-    <div id="heroCarousel" class="carousel slide carousel-fade" data-bs-ride="carousel">
-        <div class="carousel-inner">
-            <div class="carousel-item active">
-                <img src="<?php echo APP_URL; ?>/assets/images/banners/bhubaneswar_banner.jpg" class="d-block w-100" alt="NIELIT Campus">
+    <!-- MAIN SHOWCASE GRID (HERO + 3 COLUMNS) -->
+    <main class="main-showcase">
+        
+        <!-- Center Aligned Intro text -->
+        <div class="hero-top">
+            <div class="system-badge">
+                <span class="live-dot"></span> TPMS Portal Online
             </div>
-            <div class="carousel-item">
-                <img src="<?php echo APP_URL; ?>/assets/images/banners/bhubaneswar_banner_2.jpg" class="d-block w-100" alt="NIELIT Lab">
-            </div>
-            <div class="carousel-item">
-                <img src="https://via.placeholder.com/1920x600/356c9f/ffffff?text=NIELIT+Events" class="d-block w-100" alt="Events">
+            <h1 class="hero-title">Training Partner <span>Management System</span></h1>
+            <p class="hero-sub">Empowering educational centers across Odisha and Chhattisgarh with streamlined student management, bulk CBT tracking, and direct administration integration.</p>
+            <div class="stats-row">
+                <div class="stat"><div class="stat-num">50<span>+</span></div><div class="stat-label">Active Centers</div></div>
+                <div class="stat"><div class="stat-num">10<span>K+</span></div><div class="stat-label">Students Tracked</div></div>
+                <div class="stat"><div class="stat-num">2</div><div class="stat-label">Major States</div></div>
             </div>
         </div>
-        <button class="carousel-control-prev" type="button" data-bs-target="#heroCarousel" data-bs-slide="prev">
-            <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-        </button>
-        <button class="carousel-control-next" type="button" data-bs-target="#heroCarousel" data-bs-slide="next">
-            <span class="carousel-control-next-icon" aria-hidden="true"></span>
-        </button>
-    </div>
 
-    <?php
-    // Check if ALL content arrays are empty to determine if we should show fallback content
-    // Requirement 12.4: Display hardcoded content if no database content exists
-    $has_database_content = !empty($banners) || !empty($announcements_content) || 
-                           !empty($featured_courses) || !empty($text_blocks) || 
-                           !empty($image_blocks);
-    ?>
-
-    <?php if ($has_database_content): ?>
-        <!-- ===== DYNAMIC BANNER SECTIONS ===== -->
-        <?php if (!empty($banners)): ?>
-            <?php foreach ($banners as $banner): ?>
-            <section class="py-5" style="background: linear-gradient(135deg, #e3f2fd 0%, #f8f9fa 100%);">
-                <div class="container">
-                    <div class="text-center">
-                        <h2 class="fw-bold mb-3" style="color: var(--primary-blue);">
-                            <?php echo htmlspecialchars($banner['section_title']); ?>
-                        </h2>
-                        <div class="lead">
-                            <?php echo $banner['section_content']; ?>
-                        </div>
-                    </div>
+        <!-- The 3 Things in a Row (Perfectly Aligned via Grid Stretch) -->
+        <div class="dashboard-row">
+            
+            <!-- 1. Odisha Map -->
+            <div class="map-box odisha-highlight">
+                <div id="odisha-map-container" class="svg-container">
+                    <!-- D3 SVG injected here -->
                 </div>
-            </section>
-            <?php endforeach; ?>
-        <?php endif; ?>
-
-        <!-- ===== DYNAMIC ANNOUNCEMENT SECTIONS ===== -->
-        <?php if (!empty($announcements_content)): ?>
-        <section class="py-4" style="background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);">
-            <div class="container">
-                <div class="row g-3">
-                    <?php foreach ($announcements_content as $announcement): ?>
-                    <div class="col-md-<?php echo count($announcements_content) <= 2 ? '6' : '4'; ?>">
-                        <div class="alert alert-warning h-100 mb-0" role="alert">
-                            <h6 class="alert-heading fw-bold">
-                                <i class="fas fa-bullhorn"></i>
-                                <?php echo htmlspecialchars($announcement['section_title']); ?>
-                            </h6>
-                            <div class="small">
-                                <?php echo $announcement['section_content']; ?>
-                            </div>
-                        </div>
-                    </div>
-                    <?php endforeach; ?>
-                </div>
+                <h4>Odisha State</h4>
+                <p>Supporting educational initiatives across all districts.</p>
             </div>
-        </section>
-        <?php endif; ?>
 
-        <!-- ===== DYNAMIC FEATURED COURSES ===== -->
-        <?php if (!empty($featured_courses)): ?>
-        <section class="py-5 bg-white">
-            <div class="container">
-                <div class="text-center mb-4">
-                    <h3 class="fw-bold" style="color: var(--primary-blue);">
-                        <i class="fas fa-star"></i> Featured Courses
-                    </h3>
+            <!-- 2. Chhattisgarh Map -->
+            <div class="map-box chhattisgarh-highlight">
+                <div id="chhattisgarh-map-container" class="svg-container">
+                    <!-- D3 SVG injected here -->
                 </div>
-                <div class="row g-4">
-                    <?php foreach ($featured_courses as $course): ?>
-                    <div class="col-md-6 col-lg-4">
-                        <div class="feature-card">
-                            <div class="feature-icon"><i class="fas fa-graduation-cap"></i></div>
-                            <h5 class="fw-bold"><?php echo htmlspecialchars($course['section_title']); ?></h5>
-                            <div class="text-muted small">
-                                <?php echo $course['section_content']; ?>
-                            </div>
-                        </div>
-                    </div>
-                    <?php endforeach; ?>
-                </div>
+                <h4>Chhattisgarh State</h4>
+                <p>Expanding digital literacy through partners.</p>
             </div>
-        </section>
-        <?php endif; ?>
 
-        <!-- ===== DYNAMIC TEXT BLOCKS ===== -->
-        <?php if (!empty($text_blocks)): ?>
-            <?php foreach ($text_blocks as $text_block): ?>
-            <section class="py-5 bg-light">
-                <div class="container">
-                    <div class="row justify-content-center">
-                        <div class="col-lg-10">
-                            <h3 class="fw-bold mb-3" style="color: var(--primary-blue);">
-                                <?php echo htmlspecialchars($text_block['section_title']); ?>
-                            </h3>
-                            <div class="text-muted" style="line-height: 1.8;">
-                                <?php echo $text_block['section_content']; ?>
-                            </div>
+            <!-- 3. Login Panel -->
+            <div class="login-section">
+                <div class="glass-login-card">
+                    <h2>Portal Access</h2>
+                    <p>Login for active partners & administrators</p>
+                    <form action="login.php" method="POST">
+                        <div class="form-group">
+                            <label for="email">Email Address</label>
+                            <input type="email" class="form-control" id="email" name="email" placeholder="name@center.com" required>
                         </div>
-                    </div>
-                </div>
-            </section>
-            <?php endforeach; ?>
-        <?php endif; ?>
-
-        <!-- ===== DYNAMIC IMAGE BLOCKS ===== -->
-        <?php if (!empty($image_blocks)): ?>
-            <?php foreach ($image_blocks as $image_block): ?>
-            <section class="py-5 bg-white">
-                <div class="container">
-                    <div class="text-center mb-4">
-                        <h3 class="fw-bold" style="color: var(--primary-blue);">
-                            <?php echo htmlspecialchars($image_block['section_title']); ?>
-                        </h3>
-                    </div>
-                    <div class="row justify-content-center">
-                        <div class="col-lg-10">
-                            <?php echo $image_block['section_content']; ?>
+                        <div class="form-group">
+                            <label for="password">Password</label>
+                            <input type="password" class="form-control" id="password" name="password" placeholder="••••••••" required>
                         </div>
-                    </div>
-                </div>
-            </section>
-            <?php endforeach; ?>
-        <?php endif; ?>
-    
-    <?php else: ?>
-        <!-- ===== FALLBACK: HARDCODED CONTENT (When no database content exists) ===== -->
-        <!-- ===== LEVEL 1: WELCOME SECTION (Fallback/Default Content) ===== -->
-    <section class="py-5 bg-white">
-        <div class="container">
-            <div class="row justify-content-center text-center mb-5">
-                <div class="col-lg-10">
-                    <h2 class="fw-bold mb-4" style="font-size: 2.5rem; background: linear-gradient(135deg, #0d47a1 0%, #1976d2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
-                        Welcome to NIELIT Bhubaneswar
-                    </h2>
-                    <p class="text-muted lead mb-4" style="font-size: 1.15rem; line-height: 1.8;">
-                        Established in 2021, we are a premier center dedicated to skilling and reskilling professionals in Information, Electronics, and Communication Technology (IECT).
-                    </p>
-                    <div style="height: 4px; width: 80px; background: linear-gradient(90deg, #ffc107 0%, #ff9800 100%); margin: 0 auto; border-radius: 2px;"></div>
+                        <div class="form-group">
+                            <label for="role">Select Role</label>
+                            <select class="form-control" id="role" name="role">
+                                <option value="tp">Training Partner (TP)</option>
+                                <option value="admin">System Administrator</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn-submit">Secure Sign In <i class="fas fa-arrow-right"></i></button>
+                        <div class="form-footer">
+                            Forgot your password? <a href="#">Recover here</a>
+                        </div>
+                    </form>
                 </div>
             </div>
 
-            <!-- KEY FEATURES -->
-            <div class="mb-5 pb-4">
-                <div class="text-center mb-5">
-                    <h3 class="fw-bold mb-2" style="color: var(--primary-blue); font-size: 2rem;">Key Features</h3>
-                    <div style="height: 3px; width: 60px; background: linear-gradient(90deg, #ffc107 0%, #ff9800 100%); margin: 0 auto; border-radius: 2px;"></div>
-                </div>
-                <div class="row g-4">
-                    <div class="col-md-6 col-lg-3">
-                        <div class="feature-card text-center">
-                            <div class="feature-icon"><i class="fas fa-laptop-code"></i></div>
-                            <h5 class="fw-bold">Skill Development</h5>
-                            <p class="text-muted small">Focused on NSQF-aligned courses to boost employability in the tech sector.</p>
-                        </div>
-                    </div>
-                    <div class="col-md-6 col-lg-3">
-                        <div class="feature-card text-center">
-                            <div class="feature-icon"><i class="fas fa-map-marked-alt"></i></div>
-                            <h5 class="fw-bold">Regional Scope</h5>
-                            <p class="text-muted small">Operating extensively across Odisha and Chhattisgarh to reach aspiring students.</p>
-                        </div>
-                    </div>
-                    <div class="col-md-6 col-lg-3">
-                        <div class="feature-card text-center">
-                            <div class="feature-icon"><i class="fas fa-building"></i></div>
-                            <h5 class="fw-bold">Modern Facilities</h5>
-                            <p class="text-muted small">State-of-the-art labs, classrooms, and conference halls at OCAC Tower.</p>
-                        </div>
-                    </div>
-                    <div class="col-md-6 col-lg-3">
-                        <div class="feature-card text-center">
-                            <div class="feature-icon"><i class="fas fa-network-wired"></i></div>
-                            <h5 class="fw-bold">Balasore Extension</h5>
-                            <p class="text-muted small">Expanding our footprint to provide quality education in the Balasore region.</p>
-                        </div>
-                    </div>
+        </div>
+    </main>
+
+    <!-- Interactive Tooltip (Keep Outside Grid) -->
+    <div id="map-tooltip" class="map-tooltip"></div>
+
+    <!-- PLATFORM CAPABILITIES SECTION -->
+    <section class="platform-details">
+        <h2 class="section-title">Platform Capabilities</h2>
+        <div class="features-grid">
+            <div class="feature-box">
+                <div class="f-icon"><i class="fas fa-file-csv"></i></div>
+                <div class="f-content">
+                    <h3>Bulk Data Uploads</h3>
+                    <p>Easily upload student records and images via standard CSV formatting, mapped directly to active NIELIT courses to save time.</p>
                 </div>
             </div>
-
-            <!-- DETAILED INFORMATION -->
-            <div class="mt-5 pt-5" style="border-top: 2px solid #e3f2fd;">
-                <div class="text-center mb-5">
-                    <h3 class="fw-bold mb-2" style="color: var(--primary-blue); font-size: 2rem;">Detailed Information</h3>
-                    <div style="height: 3px; width: 60px; background: linear-gradient(90deg, #ffc107 0%, #ff9800 100%); margin: 0 auto; border-radius: 2px;"></div>
+            <div class="feature-box">
+                <div class="f-icon"><i class="fas fa-bell"></i></div>
+                <div class="f-content">
+                    <h3>Real-Time Notices</h3>
+                    <p>Stay updated with instant PDF notices, syllabus modifications, and critical operational guidelines straight from the administration desk.</p>
                 </div>
-                <div class="row g-4">
-                    <!-- About Us Card -->
-                    <div class="col-lg-4">
-                        <div class="info-detail-card">
-                            <div class="card-icon-header">
-                                <i class="fas fa-university"></i>
-                            </div>
-                            <h4 class="card-title">About NIELIT</h4>
-                            <p class="card-text">
-                                NIELIT Bhubaneswar is an autonomous scientific society under the Ministry of Electronics & IT, Government of India. We focus on human resource development in IECT through quality education and training.
-                            </p>
-                            <ul class="detail-list">
-                                <li><i class="fas fa-check-circle"></i> Government of India Initiative</li>
-                                <li><i class="fas fa-check-circle"></i> NSQF Aligned Programs</li>
-                                <li><i class="fas fa-check-circle"></i> Industry-Ready Training</li>
-                            </ul>
-                        </div>
-                    </div>
-
-                    <!-- Our Mission Card -->
-                    <div class="col-lg-4">
-                        <div class="info-detail-card">
-                            <div class="card-icon-header">
-                                <i class="fas fa-bullseye"></i>
-                            </div>
-                            <h4 class="card-title">Our Mission</h4>
-                            <p class="card-text">
-                                To empower youth with cutting-edge technology skills, making them industry-ready and contributing to India's digital transformation through quality education and practical training.
-                            </p>
-                            <ul class="detail-list">
-                                <li><i class="fas fa-check-circle"></i> Skill Enhancement</li>
-                                <li><i class="fas fa-check-circle"></i> Employment Generation</li>
-                                <li><i class="fas fa-check-circle"></i> Digital India Support</li>
-                            </ul>
-                        </div>
-                    </div>
-
-                    <!-- Quick Links Card -->
-                    <div class="col-lg-4">
-                        <div class="info-detail-card">
-                            <div class="card-icon-header">
-                                <i class="fas fa-link"></i>
-                            </div>
-                            <h4 class="card-title">Quick Access</h4>
-                            <p class="card-text">
-                                Explore our offerings and get started with your learning journey. Access courses, register online, and connect with us for any queries.
-                            </p>
-                            <div class="quick-links-grid">
-                                <a href="public/courses.php" class="quick-link-btn">
-                                    <i class="fas fa-book"></i> View Courses
-                                </a>
-                                <a href="student/login.php" class="quick-link-btn">
-                                    <i class="fas fa-sign-in-alt"></i> Student Portal
-                                </a>
-                                <a href="public/contact.php" class="quick-link-btn">
-                                    <i class="fas fa-envelope"></i> Contact Us
-                                </a>
-                                <a href="public/news.php" class="quick-link-btn">
-                                    <i class="fas fa-newspaper"></i> News & Events
-                                </a>
-                            </div>
-                        </div>
-                    </div>
+            </div>
+            <div class="feature-box">
+                <div class="f-icon"><i class="fas fa-chart-line"></i></div>
+                <div class="f-content">
+                    <h3>CBT Tracking & Success</h3>
+                    <p>Showcase your center's success by logging computer-based test appearances, local placements, and ongoing campus activities.</p>
                 </div>
             </div>
         </div>
     </section>
-    <?php endif; // End of fallback content check ?>
 
-    <!-- ===== ANNOUNCEMENTS SECTION ===== -->
-    <?php
-    // Fetch active announcements for public (all or students)
-    $announcements_sql = "SELECT * FROM announcements 
-                          WHERE is_active = 1 
-                          AND (target_audience = 'all' OR target_audience = 'students')
-                          ORDER BY created_at DESC 
-                          LIMIT 3";
-    $announcements_result = $conn->query($announcements_sql);
-    ?>
-    
-    <?php if ($announcements_result && $announcements_result->num_rows > 0): ?>
-    <section class="py-5" style="background: linear-gradient(135deg, #e3f2fd 0%, #f8f9fa 100%);">
-        <div class="container">
-            <div class="text-center mb-4">
-                <h3 class="fw-bold" style="color: var(--primary-blue);">
-                    <i class="fas fa-bullhorn"></i> Latest Announcements
-                </h3>
-            </div>
-            <div class="row g-3">
-                <?php while ($announcement = $announcements_result->fetch_assoc()): 
-                    $alert_class = [
-                        'info' => 'alert-info',
-                        'success' => 'alert-success',
-                        'warning' => 'alert-warning',
-                        'danger' => 'alert-danger'
-                    ];
-                    $icon_class = [
-                        'info' => 'fa-info-circle',
-                        'success' => 'fa-check-circle',
-                        'warning' => 'fa-exclamation-triangle',
-                        'danger' => 'fa-exclamation-circle'
-                    ];
-                    $type = $announcement['type'];
-                ?>
-                <div class="col-md-4">
-                    <div class="alert <?php echo $alert_class[$type]; ?> h-100 mb-0" role="alert">
-                        <h6 class="alert-heading fw-bold">
-                            <i class="fas <?php echo $icon_class[$type]; ?>"></i>
-                            <?php echo htmlspecialchars($announcement['title']); ?>
-                        </h6>
-                        <p class="mb-2 small"><?php echo nl2br(htmlspecialchars($announcement['message'])); ?></p>
-                        <hr>
-                        <small class="text-muted">
-                            <i class="fas fa-clock"></i> 
-                            <?php echo date('M d, Y', strtotime($announcement['created_at'])); ?>
-                        </small>
-                    </div>
-                </div>
-                <?php endwhile; ?>
-            </div>
+    <!-- FOOTER -->
+    <footer class="footer">
+        <div class="footer-left">
+            <p>&copy; <?= date('Y') ?> NIELIT Bhubaneswar. All Rights Reserved.</p>
+            <div class="credit-text"><i class="fas fa-code"></i> Designed & Developed for Regional Training Partners</div>
         </div>
-    </section>
-    <?php endif; ?>
-
-    <footer class="pt-5">
-        <div class="container pb-4">
-            <div class="row gy-4">
-                <div class="col-lg-4 col-md-6">
-                    <h5>Important Links</h5>
-                    <ul class="list-unstyled">
-                        <li><a href="https://india.gov.in/" target="_blank"><i class="fas fa-chevron-right me-2 small"></i>National Portal of India</a></li>
-                        <li><a href="https://www.mygov.in/" target="_blank"><i class="fas fa-chevron-right me-2 small"></i>MyGov</a></li>
-                        <li><a href="https://rtionline.gov.in/" target="_blank"><i class="fas fa-chevron-right me-2 small"></i>RTI Online</a></li>
-                        <li><a href="http://meity.gov.in/" target="_blank"><i class="fas fa-chevron-right me-2 small"></i>MeitY</a></li>
-                        <li><a href="https://www.nielit.gov.in/" target="_blank"><i class="fas fa-chevron-right me-2 small"></i>NIELIT HQ</a></li>
-                    </ul>
-                </div>
-
-                <div class="col-lg-4 col-md-6">
-                    <h5>Quick Explore</h5>
-                    <ul class="list-unstyled">
-                        <li><a href="#"><i class="fas fa-chevron-right me-2 small"></i>About Us</a></li>
-                        <li><a href="#"><i class="fas fa-chevron-right me-2 small"></i>Privacy Policy</a></li>
-                        <li><a href="#"><i class="fas fa-chevron-right me-2 small"></i>Terms & Conditions</a></li>
-                        <li><a href="public/contact.php"><i class="fas fa-chevron-right me-2 small"></i>Contact Us</a></li>
-                    </ul>
-                </div>
-
-                <div class="col-lg-4 col-md-12">
-                    <h5>Contact Info</h5>
-                    <p class="small text-muted mb-3">National Institute of Electronics & Information Technology, Bhubaneswar</p>
-                    <ul class="list-unstyled">
-                        <li class="mb-2"><i class="fas fa-phone-alt me-2 text-warning"></i> 0674-2960354</li>
-                        <li class="mb-2"><i class="fas fa-envelope me-2 text-warning"></i> dir-bbsr@nielit.gov.in</li>
-                        <li class="mb-2"><i class="fas fa-clock me-2 text-warning"></i> Mon-Fri: 09:00 AM – 5:30 PM</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-
-        <div class="copyright-bar text-center text-muted small">
-            <div class="container">
-                <div class="row">
-                    <div class="col-md-6 text-md-start">
-                        © 2025 NIELIT Bhubaneswar. All Rights Reserved.
-                    </div>
-                    <div class="col-md-6 text-md-end">
-                        Designed & Developed by NIELIT Team
-                    </div>
-                </div>
-            </div>
+        <div class="footer-links">
+            <a href="#">Privacy Policy</a>
+            <a href="#">Terms of Use</a>
+            <a href="#">Helpdesk: 0674-2960354</a>
         </div>
     </footer>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Interactive Map Logic (D3.js) -->
+    <script>
+        // Mobile Menu Toggle
+        function toggleMobileMenu() {
+            const navLinks = document.getElementById('navLinks');
+            navLinks.classList.toggle('active');
+        }
+
+        // Bulletproof D3.js Map Rendering
+        document.addEventListener("DOMContentLoaded", function() {
+            
+            const tooltip = d3.select("#map-tooltip");
+
+            function drawInteractiveMap(containerId, geojsonPath, districtClass) {
+                const container = d3.select("#" + containerId);
+                
+                // Fallbacks to prevent silent crashes if grid isn't painted yet
+                const rect = container.node().getBoundingClientRect();
+                const width = rect.width || container.node().clientWidth || 400;
+                const height = rect.height || container.node().clientHeight || 280;
+
+                const svg = container.append("svg")
+                    .attr("width", "100%")
+                    .attr("height", "100%")
+                    .attr("viewBox", `0 0 ${width} ${height}`)
+                    .attr("preserveAspectRatio", "xMidYMid meet");
+
+                const mapGroup = svg.append("g");
+
+                d3.json(geojsonPath).then(function(geoData) {
+                    
+                    const projection = d3.geoMercator().fitSize([width - 30, height - 30], geoData);
+                    const pathGenerator = d3.geoPath().projection(projection);
+
+                    mapGroup.selectAll("path")
+                        .data(geoData.features)
+                        .enter()
+                        .append("path")
+                        .attr("d", pathGenerator)
+                        .attr("class", `district-path ${districtClass}`)
+                        .on("mouseover", function(event, d) {
+                            // Handles varying GeoJSON property names for Indian districts
+                            const districtName = d.properties.NAME_2 || d.properties.district || d.properties.dtname || "Unknown District";
+                            
+                            tooltip.style("opacity", 1)
+                                   .html(`<i class="fas fa-map-marker-alt" style="color:#fbbf24; margin-right:6px;"></i> ${districtName}`);
+                        })
+                        .on("mousemove", function(event) {
+                            tooltip.style("left", (event.pageX + 15) + "px")
+                                   .style("top", (event.pageY - 25) + "px");
+                        })
+                        .on("mouseout", function() {
+                            tooltip.style("opacity", 0);
+                        });
+
+                }).catch(function(error) {
+                    // Clean error boundary if file is missing
+                    console.error("Map Error for " + containerId + ": ", error);
+                    container.html(`
+                        <div class="map-error">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            Map file not found.<br>
+                            Please upload <strong>${geojsonPath}</strong> to File Manager.
+                        </div>
+                    `);
+                });
+            }
+
+            // Draw Maps
+            drawInteractiveMap("odisha-map-container", "public/data/odisha.geojson", "district-odisha");
+            drawInteractiveMap("chhattisgarh-map-container", "public/data/chhattisgarh.geojson", "district-chhattisgarh");
+        });
+    </script>
 </body>
 </html>
