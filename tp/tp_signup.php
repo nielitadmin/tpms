@@ -1,6 +1,6 @@
 <?php
 session_start();
-require_once 'db.php';
+require __DIR__ . '/../includes/config.php'; 
 
 if (isset($_POST['action']) && $_POST['action'] === 'save_draft') {
     $_SESSION['tp_draft'] = $_POST;
