@@ -512,6 +512,19 @@ body {
 
 <!-- Page Title -->
 <div class="page-title">
+  <div style="max-width:1200px;margin:0 auto;text-align:left;margin-bottom:8px;">
+    <button onclick="history.back()" style="
+      display:inline-flex;align-items:center;gap:6px;
+      background:#fff;color:var(--navy);
+      border:1.5px solid #b0c4d8;border-radius:6px;
+      padding:6px 14px;font-size:13px;font-weight:600;
+      cursor:pointer;font-family:'Inter',sans-serif;
+      transition:all .18s;
+    "
+    onmouseover="this.style.borderColor='#0a7c8c';this.style.color='#0a7c8c';"
+    onmouseout="this.style.borderColor='#b0c4d8';this.style.color='var(--navy)';"
+    >&#8592; Back</button>
+  </div>
   <div class="bc">Home &rsaquo; Training Partner &rsaquo; <span>New Registration</span></div>
   <h2>Training Partner <em>Registration</em></h2>
   <p>Complete all 5 steps &bull; Save as Draft anytime &bull; Resume anytime from where you left off</p>
