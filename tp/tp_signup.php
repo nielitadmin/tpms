@@ -396,8 +396,15 @@ body {
   cursor: pointer; border: none; transition: all .2s;
   text-transform: uppercase; letter-spacing: .5px;
 }
-.btn-prev { background: rgba(255,255,255,0.8); color: var(--muted); border: 1.5px solid #c8d8e8; }
-.btn-prev:hover { background: #e8f0f8; color: var(--navy); }
+.btn-prev {
+  background: #ffffff;
+  color: var(--navy);
+  border: 1.5px solid #b0c4d8;
+  display: inline-flex; align-items: center; gap: 6px;
+  font-weight: 600;
+}
+.btn-prev::before { content: '\2190'; font-size: 15px; }
+.btn-prev:hover { background: #eef4fb; border-color: var(--teal); color: var(--teal); }
 .btn-next {
   background: var(--teal);
   color: #fff;
@@ -623,7 +630,7 @@ body {
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <span class="draft-saved-msg" id="dm1">&#10003; Draft Saved!</span>
       <button type="button" class="btn btn-draft" onclick="saveDraft(1)">&#128190; Save Draft</button>
-      <button type="button" class="btn btn-next" onclick="goNext(1)">Next &#8594;</button>
+      <button type="button" class="btn btn-next" onclick="goNext(1)">Next &rarr;</button>
     </div>
   </div>
 </div>
@@ -689,11 +696,11 @@ body {
     </div>
   </div>
   <div class="nav-bar">
-    <button type="button" class="btn btn-prev" onclick="goPrev(2)">&#8592; Back</button>
+    <button type="button" class="btn btn-prev" onclick="goPrev(2)">Back</button>
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <span class="draft-saved-msg" id="dm2">&#10003; Draft Saved!</span>
       <button type="button" class="btn btn-draft" onclick="saveDraft(2)">&#128190; Save Draft</button>
-      <button type="button" class="btn btn-next" onclick="goNext(2)">Next &#8594;</button>
+      <button type="button" class="btn btn-next" onclick="goNext(2)">Next &rarr;</button>
     </div>
   </div>
 </div>
@@ -763,11 +770,11 @@ body {
     </div>
   </div>
   <div class="nav-bar">
-    <button type="button" class="btn btn-prev" onclick="goPrev(3)">&#8592; Back</button>
+    <button type="button" class="btn btn-prev" onclick="goPrev(3)">Back</button>
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <span class="draft-saved-msg" id="dm3">&#10003; Draft Saved!</span>
       <button type="button" class="btn btn-draft" onclick="saveDraft(3)">&#128190; Save Draft</button>
-      <button type="button" class="btn btn-next" onclick="goNext(3)">Next &#8594;</button>
+      <button type="button" class="btn btn-next" onclick="goNext(3)">Next &rarr;</button>
     </div>
   </div>
 </div>
@@ -850,11 +857,11 @@ body {
     </div>
   </div>
   <div class="nav-bar">
-    <button type="button" class="btn btn-prev" onclick="goPrev(4)">&#8592; Back</button>
+    <button type="button" class="btn btn-prev" onclick="goPrev(4)">Back</button>
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <span class="draft-saved-msg" id="dm4">&#10003; Draft Saved!</span>
       <button type="button" class="btn btn-draft" onclick="saveDraft(4)">&#128190; Save Draft</button>
-      <button type="button" class="btn btn-next" onclick="goNext(4)">Next &#8594;</button>
+      <button type="button" class="btn btn-next" onclick="goNext(4)">Next &rarr;</button>
     </div>
   </div>
 </div>
@@ -904,7 +911,7 @@ body {
     </div>
   </div>
   <div class="nav-bar">
-    <button type="button" class="btn btn-prev" onclick="goPrev(5)">&#8592; Back</button>
+    <button type="button" class="btn btn-prev" onclick="goPrev(5)">Back</button>
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <span class="draft-saved-msg" id="dm5">&#10003; Draft Saved!</span>
       <button type="button" class="btn btn-draft" onclick="saveDraft(5)">&#128190; Save Draft</button>
