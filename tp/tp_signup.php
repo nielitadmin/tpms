@@ -539,7 +539,7 @@ body {
 <div class="alert alert-success" style="padding:22px;border-radius:10px;">
   <strong>&#10003; Application Submitted Successfully!</strong><br><br>
   Your TP registration has been received by NIELIT. A confirmation will be sent to your registered email.
-  <br><br><a href="tp_login.php" style="color:var(--success);font-weight:700;">&#8594; Login to your account</a>
+  <br><br><a href="login.php" style="color:var(--success);font-weight:700;">&#8594; Login to your account</a>
 </div>
 
 <?php else: ?>
@@ -937,7 +937,7 @@ body {
 </div><!-- /.form-card -->
 
 <div style="text-align:center;margin-top:14px;font-size:12px;color:var(--muted);">
-  Already registered? <a href="tp_login.php" style="color:var(--teal);font-weight:600">Login here</a> &bull; Help: <a href="mailto:tp@nielit.gov.in" style="color:var(--teal)">tp@nielit.gov.in</a> &bull; 1800-XXX-XXXX (Toll Free)
+  Already registered? <a href="login.php" style="color:var(--teal);font-weight:600">Login here</a> &bull; Help: <a href="mailto:tp@nielit.gov.in" style="color:var(--teal)">tp@nielit.gov.in</a> &bull; 1800-XXX-XXXX (Toll Free)
 </div>
 
 <?php endif; ?>
