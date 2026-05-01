@@ -1,4 +1,6 @@
 <?php
+// CERT-In Compliant: Add security headers via .htaccess or server config:
+// Content-Security-Policy, X-Frame-Options: DENY, X-XSS-Protection, Strict-Transport-Security
 session_start();
 require __DIR__ . '/../includes/config.php'; 
 
@@ -61,7 +63,11 @@ $v = array_merge($draft, $_POST ?? []);
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TP Registration | NIELIT</title>
+<meta name="description" content="Register as a Training Partner with NIELIT - National Institute of Electronics and Information Technology, Government of India">
+<meta name="keywords" content="NIELIT, Training Partner, Registration, TPMS, Government of India, MeitY">
+<meta name="author" content="NIELIT, Government of India">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<title>Training Partner Registration | NIELIT TPMS | Government of India</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -208,7 +214,7 @@ body {
 .step-bar-wrap::before {
   content: ''; position: absolute;
   top: 16px; left: 0; right: 0; height: 3px;
-  background: rgba(0,30,80,0.12); z-index: 0;
+  background: #dce8f4; z-index: 0;
   border-radius: 2px;
 }
 .step-item { flex: 1; display: flex; flex-direction: column; align-items: center; position: relative; z-index: 1; }
@@ -216,7 +222,7 @@ body {
   width: 34px; height: 34px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   font-weight: 700; font-size: 13px;
-  border: 3px solid #b0c4dc; background: rgba(255,255,255,0.7); color: #8090a0;
+  border: 2px solid #c8d8e8; background: #f5f8fc; color: #8090a0;
   transition: all .35s cubic-bezier(.34,1.56,.64,1);
 }
 .step-circle.done {
@@ -235,7 +241,7 @@ body {
 .step-label.done { color: var(--green); }
 
 .progress-row { display: flex; align-items: center; gap: 10px; }
-.progress-track { flex: 1; height: 9px; background: rgba(0,30,80,0.1); border-radius: 6px; overflow: hidden; }
+.progress-track { flex: 1; height: 9px; background: #dce8f4; border-radius: 6px; overflow: hidden; }
 .progress-fill {
   height: 100%;
   background: linear-gradient(to right, var(--teal), #0fa3b1);
@@ -267,7 +273,7 @@ body {
   background: #f0f7ff;
   border-left: 4px solid var(--teal);
   padding: 13px 20px; display: flex; align-items: center; gap: 12px;
-  border-bottom: 1px solid rgba(0,30,80,0.08);
+  border-bottom: 1px solid #dce8f4;
 }
 .panel-num {
   background: var(--teal);
@@ -328,7 +334,7 @@ body {
 .upload-box label .req { color: var(--error); }
 .upload-box label .opt { color: var(--muted); font-weight: 400; font-size: 11px; }
 .upload-box input[type=file] { width: 100%; font-size: 12px; color: var(--muted); cursor: pointer; }
-.upload-hint { font-size: 10.5px; color: var(--muted); margin-top: 3px; }
+.upload-hint { font-size: 10.5px; color: var(--muted); margin-top: 3px; line-height: 1.4; }
 
 /* Radio group */
 .radio-group { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
@@ -364,14 +370,14 @@ body {
 .doc-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .doc-table thead tr { background: var(--navy); color: #fff; }
 .doc-table thead th { padding: 10px 12px; text-align: left; font-weight: 600; font-size: 12.5px; }
-.doc-table tbody tr:nth-child(even) { background: rgba(230,240,255,0.5); }
-.doc-table tbody tr { border-bottom: 1px solid rgba(0,40,100,0.08); }
+.doc-table tbody tr:nth-child(even) { background: #eef4ff; }
+.doc-table tbody tr { border-bottom: 1px solid #e2e8f0; }
 .doc-table tbody td { padding: 9px 12px; vertical-align: middle; }
 
 /* Alerts */
 .alert { padding: 12px 16px; border-radius: 8px; margin-bottom: 14px; font-size: 13px; }
-.alert-error { background: rgba(183,43,43,0.08); border-left: 4px solid var(--error); color: var(--error); }
-.alert-success { background: rgba(10,124,62,0.08); border-left: 4px solid var(--success); color: var(--success); font-size: 14px; }
+.alert-error { background: #fff5f5; border-left: 4px solid var(--error); color: var(--error); }
+.alert-success { background: #f0faf5; border-left: 4px solid var(--success); color: var(--success); font-size: 14px; }
 .alert ul { padding-left: 16px; margin-top: 4px; }
 
 /* Draft banner */
@@ -386,13 +392,13 @@ body {
 .nav-bar {
   display: flex; align-items: center; justify-content: space-between;
   padding: 14px 20px;
-  background: rgba(0,30,80,0.04);
-  border-top: 1px solid rgba(0,30,80,0.08);
+  background: #f7f9fc;
+  border-top: 1px solid var(--border);
   flex-wrap: wrap; gap: 10px;
 }
 .btn {
   padding: 9px 22px; font-size: 13px; font-weight: 700;
-  font-family: 'DM Sans', sans-serif; border-radius: 6px;
+  font-family: 'Inter', sans-serif; border-radius: 6px;
   cursor: pointer; border: none; transition: all .2s;
   text-transform: uppercase; letter-spacing: .5px;
 }
@@ -412,7 +418,7 @@ body {
 }
 .btn-next:hover { background: #086e7c; box-shadow: 0 4px 16px rgba(10,124,140,0.4); transform: translateY(-1px); }
 .btn-draft {
-  background: rgba(255,248,220,0.9); color: #7a5a00;
+  background: #fffbea; color: #7a5a00;
   border: 1.5px solid var(--gold); font-size: 12px; padding: 8px 15px;
 }
 .btn-draft:hover { background: #fff3c0; }
@@ -426,7 +432,7 @@ body {
 
 /* Declaration */
 .decl-box {
-  background: rgba(255,248,220,0.85); border: 2px solid var(--gold);
+  background: #fffbea; border: 2px solid var(--gold);
   border-radius: 8px; padding: 14px; margin-top: 18px;
 }
 .decl-box label { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; font-size: 13px; }
@@ -443,6 +449,39 @@ body {
 .site-footer a { color: #8faecf; text-decoration: none; }
 .site-footer a:hover { color: #fff; }
 
+
+/* ── WCAG: Keyboard focus ring ── */
+:focus-visible {
+  outline: 3px solid var(--teal);
+  outline-offset: 2px;
+}
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid var(--teal);
+  outline-offset: 2px;
+}
+
+
+@media (max-width: 768px) {
+  .header-inner { flex-wrap: wrap; gap: 10px; }
+  .hdr-right-block { display: none; }
+  .navbar-inner { flex-wrap: wrap; }
+  .navbar ul { justify-content: center; }
+  .wizard-wrap { padding: 0 10px; }
+  .form-grid.three { grid-template-columns: 1fr 1fr; }
+}
+
+
+@media print {
+  .gov-topbar, .navbar, .site-footer, .nav-bar, .btn, .draft-banner { display: none !important; }
+  .form-card { box-shadow: none; border: 1px solid #ccc; }
+  body { background: #fff; }
+  .step-panel { display: block !important; }
+}
+
 @media (max-width: 640px) {
   .form-grid, .form-grid.three { grid-template-columns: 1fr; }
   .step-label { display: none; }
@@ -458,19 +497,22 @@ body {
 
 <div class="page-wrapper">
 
+<!-- Skip Navigation (GIGW Accessibility) -->
+<a href="#main-content" style="position:absolute;left:-9999px;top:0;z-index:9999;background:var(--navy);color:#fff;padding:8px 14px;font-size:13px;font-weight:600;text-decoration:none;" onfocus="this.style.left='0'" onblur="this.style.left='-9999px'">Skip to Main Content</a>
+
 <!-- Gov Topbar -->
 <div class="gov-topbar">
   <div class="topbar-left">
     <span>&#127470;&#127475;</span>
-    <span>Government of India &nbsp;&bull;&nbsp; Ministry of Electronics &amp; IT</span>
+    <span aria-label="Government of India, Ministry of Electronics and Information Technology">Government of India &nbsp;&bull;&nbsp; Ministry of Electronics &amp; IT</span>
   </div>
   <div class="topbar-right">
-    <a href="#">MeitY</a> <a href="#">NIELIT HQ</a> <a href="#">Grievance</a> <a href="#">RTI</a> <a href="#">Screen Reader</a>
+    <a href="#">MeitY</a> <a href="#">NIELIT HQ</a> <a href="#">Grievance</a> <a href="#">RTI</a> <a href="#" aria-label="Screen Reader Access">Screen Reader Access</a>
   </div>
 </div>
 
 <!-- Header -->
-<div class="header">
+<div class="header" role="banner">
   <div class="tricolor"></div>
   <div class="header-inner">
     <!-- NIELIT Official Logo -->
@@ -495,7 +537,7 @@ body {
 </div>
 
 <!-- Navbar -->
-<nav class="navbar">
+<nav class="navbar" role="navigation" aria-label="Main Navigation">
   <div class="navbar-inner">
     <a href="#" class="navbar-brand">
       <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
@@ -533,7 +575,7 @@ body {
 <!-- ══════════════════════════════════════
      WIZARD
 ══════════════════════════════════════ -->
-<div class="wizard-wrap">
+<div class="wizard-wrap" id="main-content" role="main">
 
 <?php if ($success): ?>
 <div class="alert alert-success" style="padding:22px;border-radius:10px;">
@@ -589,11 +631,11 @@ body {
       </div>
       <div class="form-group">
         <label>Official Email <span class="req">*</span></label>
-        <input type="email" name="email" value="<?= htmlspecialchars($v['email'] ?? '') ?>" placeholder="office@institute.in">
+        <input type="email" name="email" autocomplete="email" value="<?= htmlspecialchars($v['email'] ?? '') ?>" placeholder="office@institute.in">
       </div>
       <div class="form-group">
         <label>Mobile Number <span class="req">*</span></label>
-        <input type="tel" name="mobile" value="<?= htmlspecialchars($v['mobile'] ?? '') ?>" placeholder="10-digit mobile">
+        <input type="tel" name="mobile" autocomplete="tel" value="<?= htmlspecialchars($v['mobile'] ?? '') ?>" placeholder="10-digit mobile">
       </div>
       <div class="form-group">
         <label>Landline / STD</label>
@@ -630,11 +672,11 @@ body {
       </div>
       <div class="form-group">
         <label>Create Password <span class="req">*</span></label>
-        <input type="password" name="password" placeholder="Minimum 8 characters">
+        <input type="password" name="password" autocomplete="new-password" placeholder="Minimum 8 characters">
       </div>
       <div class="form-group">
         <label>Confirm Password <span class="req">*</span></label>
-        <input type="password" name="confirm_password" placeholder="Re-enter password">
+        <input type="password" name="confirm_password" autocomplete="new-password" placeholder="Re-enter password">
       </div>
     </div>
   </div>
@@ -943,7 +985,7 @@ body {
 <?php endif; ?>
 </div><!-- /.wizard-wrap -->
 
-<footer class="site-footer">
+<footer class="site-footer" role="contentinfo">
   <div style="max-width:1200px;margin:auto;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
     <div>&copy; <?= date('Y') ?> NIELIT, Bhubaneswar &mdash; Ministry of Electronics &amp; IT, Government of India</div>
     <div><a href="#">Privacy Policy</a> &bull; <a href="#">Terms of Use</a> &bull; <a href="#">Accessibility</a> &bull; <a href="#">Sitemap</a></div>
