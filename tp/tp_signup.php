@@ -428,7 +428,7 @@ body {
   box-shadow: 0 4px 18px rgba(10,124,62,0.4);
 }
 .btn-submit:hover { transform: translateY(-1px); box-shadow: 0 6px 28px rgba(10,124,62,0.5); }
-.draft-saved-msg { font-size: 12px; color: var(--success); font-weight: 600; display: none; }
+.draft-saved-msg { font-size: 12px; color: var(--success); font-weight: 600; display: none; background:#f0faf5; padding:4px 10px; border-radius:4px; border:1px solid var(--success); }
 
 /* Declaration */
 .decl-box {
@@ -500,6 +500,9 @@ textarea:focus-visible {
 <!-- Skip Navigation (GIGW Accessibility) -->
 <a href="#main-content" style="position:absolute;left:-9999px;top:0;z-index:9999;background:var(--navy);color:#fff;padding:8px 14px;font-size:13px;font-weight:600;text-decoration:none;" onfocus="this.style.left='0'" onblur="this.style.left='-9999px'">Skip to Main Content</a>
 
+<!-- Top saffron strip (as per NIC/NIELIT portal) -->
+<div style="height:3px;background:linear-gradient(to right,#FF9933 33%,#ffffff 33% 66%,#138808 66%);"></div>
+
 <!-- Gov Topbar -->
 <div class="gov-topbar">
   <div class="topbar-left">
@@ -513,7 +516,6 @@ textarea:focus-visible {
 
 <!-- Header -->
 <div class="header" role="banner">
-  <div class="tricolor"></div>
   <div class="header-inner">
     <!-- NIELIT Official Logo -->
     <div style="flex-shrink:0;">
@@ -544,10 +546,10 @@ textarea:focus-visible {
       NIELIT TPMS
     </a>
     <ul>
-      <li><a href="#">&#128218; Courses</a></li>
-      <li><a href="#">&#128227; Public Notices</a></li>
-      <li><a href="#">&#129693; Contact Us</a></li>
-      <li><a href="#" class="btn-register active">&#128101; Register Center</a></li>
+      <li><a href="#"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:4px"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>Courses</a></li>
+      <li><a href="#"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:4px"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>Public Notices</a></li>
+      <li><a href="#"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:4px"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81 19.79 19.79 0 01.22 1.18 2 2 0 012.22 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>Contact Us</a></li>
+      <li><a href="#" class="btn-register active"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:4px"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>Register Center</a></li>
     </ul>
   </div>
 </nav>
@@ -627,19 +629,23 @@ textarea:focus-visible {
     <div class="form-grid">
       <div class="form-group col-full">
         <label>Full Name of Institute / Organization <span class="req">*</span></label>
-        <input type="text" name="institute_name" value="<?= htmlspecialchars($v['institute_name'] ?? '') ?>" placeholder="As per registration certificate">
+        <input type="text" name="institute_name" required value="<?= htmlspecialchars($v['institute_name'] ?? '') ?>" placeholder="As per registration certificate">
       </div>
       <div class="form-group">
         <label>Official Email <span class="req">*</span></label>
-        <input type="email" name="email" autocomplete="email" value="<?= htmlspecialchars($v['email'] ?? '') ?>" placeholder="office@institute.in">
+        <input type="email" name="email" autocomplete="email" required value="<?= htmlspecialchars($v['email'] ?? '') ?>" placeholder="office@institute.in">
       </div>
       <div class="form-group">
         <label>Mobile Number <span class="req">*</span></label>
-        <input type="tel" name="mobile" autocomplete="tel" value="<?= htmlspecialchars($v['mobile'] ?? '') ?>" placeholder="10-digit mobile">
+        <input type="tel" name="mobile" autocomplete="tel" required value="<?= htmlspecialchars($v['mobile'] ?? '') ?>" placeholder="10-digit mobile">
       </div>
       <div class="form-group">
         <label>Landline / STD</label>
         <input type="tel" name="landline" value="<?= htmlspecialchars($v['landline'] ?? '') ?>" placeholder="0XXX-XXXXXXX">
+      </div>
+      <div class="form-group">
+        <label>PAN Number <span class="req">*</span></label>
+        <input type="text" name="pan_number" value="<?= htmlspecialchars($v['pan_number'] ?? '') ?>" maxlength="10" placeholder="ABCDE1234F" style="text-transform:uppercase">
       </div>
       <div class="form-group">
         <label>Website</label>
@@ -669,6 +675,27 @@ textarea:focus-visible {
       <div class="form-group">
         <label>Year of Establishment</label>
         <input type="number" name="est_year" value="<?= htmlspecialchars($v['est_year'] ?? '') ?>" min="1950" max="2026">
+      </div>
+      <div class="form-group">
+        <label>Gender <span class="req">*</span></label>
+        <select name="gender" required>
+          <option value="">-- Select --</option>
+          <option <?= ($v['gender']??'')=='Male'?'selected':'' ?>>Male</option>
+          <option <?= ($v['gender']??'')=='Female'?'selected':'' ?>>Female</option>
+          <option <?= ($v['gender']??'')=='Other'?'selected':'' ?>>Other</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Category <span class="req">*</span></label>
+        <select name="category" required>
+          <option value="">-- Select --</option>
+          <option <?= ($v['category']??'')=='General'?'selected':'' ?>>General</option>
+          <option <?= ($v['category']??'')=='OBC'?'selected':'' ?>>OBC</option>
+          <option <?= ($v['category']??'')=='SC'?'selected':'' ?>>SC</option>
+          <option <?= ($v['category']??'')=='ST'?'selected':'' ?>>ST</option>
+          <option <?= ($v['category']??'')=='EWS'?'selected':'' ?>>EWS</option>
+          <option <?= ($v['category']??'')=='PwD'?'selected':'' ?>>PwD</option>
+        </select>
       </div>
       <div class="form-group">
         <label>Create Password <span class="req">*</span></label>
@@ -1014,7 +1041,14 @@ function updateUI(s){
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
-function goNext(f){cur=Math.min(f+1,tot);updateUI(cur)}
+function goNext(f){
+  // Basic required field check per step
+  var panel=document.getElementById('panel'+f);
+  var required=panel.querySelectorAll('input[required],select[required],textarea[required]');
+  // We do soft navigation (server validates on submit) but scroll to top
+  cur=Math.min(f+1,tot);
+  updateUI(cur);
+}
 function goPrev(f){cur=Math.max(f-1,1);updateUI(cur)}
 
 function saveDraft(step){
