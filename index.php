@@ -2,9 +2,39 @@
 // Start a clean session
 session_name('NIELIT_LANDING');
 session_start();
-
-// Clear any existing sessions when coming to the landing page
 session_destroy();
+
+// Include Database connection (which loads your .env file and creates $conn)
+require_once 'includes/config.php';
+
+// Fetch dynamic TP counts per district for the interactive maps
+$districtTPCounts = [];
+
+// Ensure connection exists and query the database
+if (isset($conn) && $conn instanceof mysqli && !$conn->connect_error) {
+    
+    // We are querying the REAL data here. 
+    // IMPORTANT: Your `centers` table MUST have a column named `district`.
+    $query = "SELECT district, COUNT(*) as count FROM centers WHERE status = 'Approved' AND district IS NOT NULL GROUP BY district";
+    $result = $conn->query($query);
+    
+    if ($result) {
+        while ($row = $result->fetch_assoc()) {
+            // Make the key lowercase to easily match it with the GeoJSON map data later
+            $districtName = strtolower(trim($row['district']));
+            $districtTPCounts[$districtName] = $row['count'];
+        }
+    } else {
+        // If the query fails, log it and leave array empty.
+        error_log("Map Data Query Failed: " . $conn->error);
+    }
+} else {
+    // If DB connection fails, log it and leave array empty.
+    error_log("Database connection failed while fetching map data.");
+}
+
+// Convert PHP array to a JSON object for the D3.js script to read at the bottom of the page
+$tpCountsJson = json_encode($districtTPCounts);
 ?>
 
 <!DOCTYPE html>
@@ -14,12 +44,13 @@ session_destroy();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Training Partner System - NIELIT Bhubaneswar</title>
     
+    <!-- Google Fonts & FontAwesome -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <!-- D3.js Library -->
+    <!-- D3.js Library for Maps -->
     <script src="https://d3js.org/d3.v7.min.js"></script>
 
     <style>
@@ -72,7 +103,6 @@ session_destroy();
         .nav-container { display: flex; justify-content: space-between; align-items: center; max-width: 1440px; margin: 0 auto; padding: 0 40px; width: 100%; flex-wrap: wrap; }
         .nav-home-btn { color: #FFFFFF; text-decoration: none; font-weight: 700; font-size: 15px; display: flex; align-items: center; gap: 10px; padding: 15px 0; transition: color 0.3s; }
         .nav-home-btn:hover { color: #E0F2FE;}
-        .nav-home-btn i { font-size: 18px; }
         .mobile-menu-btn { display: none; background: none; border: none; color: #FFFFFF; font-size: 24px; cursor: pointer; padding: 10px 0; }
         .nav-links { display: flex; height: 100%; align-items: center; }
         .nav-link { color: #E0F2FE; text-decoration: none; font-weight: 600; font-size: 14px; padding: 16px 20px; transition: 0.3s; display: flex; align-items: center; gap: 8px; border-radius: 8px; margin: 0 2px;}
@@ -111,32 +141,12 @@ session_destroy();
         .stat-num span { color: var(--primary); }
         .stat-label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; font-weight: 800; letter-spacing: 0.5px; margin-top: 6px;}
 
-        /* THE 3-COLUMN ROW (Perfectly Aligned) */
-        .dashboard-row { 
-            display: grid; 
-            grid-template-columns: 1fr 1fr 380px; 
-            gap: 30px; 
-            align-items: stretch; /* Forces equal height */
-            animation: fadeUp 0.8s ease both; 
-            animation-delay: 0.2s; 
-        }
-
-        .map-box { 
-            background: rgba(255, 255, 255, 0.85); 
-            backdrop-filter: blur(20px); 
-            border: 1px solid rgba(255,255,255,0.8); 
-            padding: 25px; 
-            border-radius: 24px; 
-            box-shadow: var(--shadow-md); 
-            text-align: center; 
-            display: flex; 
-            flex-direction: column; 
-            height: 100%; /* Fill the grid height */
-        }
+        /* THE 3-COLUMN ROW */
+        .dashboard-row { display: grid; grid-template-columns: 1fr 1fr 380px; gap: 30px; align-items: stretch; animation: fadeUp 0.8s ease both; animation-delay: 0.2s; }
+        .map-box { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.8); padding: 25px; border-radius: 24px; box-shadow: var(--shadow-md); text-align: center; display: flex; flex-direction: column; height: 100%; }
         .map-box h4 { margin-top: 20px; font-size: 20px; font-weight: 800; color: var(--text-dark); }
         .map-box p { font-size: 14px; color: var(--text-muted); font-weight: 500; margin-top: 5px; }
         
-        /* Map specific styling */
         .map-box.odisha-highlight { background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(224, 242, 254, 0.6)); border-color: rgba(2, 132, 199, 0.1); }
         .map-box.odisha-highlight h4 { color: var(--primary); }
         .district-odisha { fill: #bae6fd; stroke: #ffffff; stroke-width: 0.8px; transition: all 0.3s ease; cursor: pointer; } 
@@ -147,63 +157,33 @@ session_destroy();
         .district-chhattisgarh { fill: #a7f3d0; stroke: #ffffff; stroke-width: 0.8px; transition: all 0.3s ease; cursor: pointer; } 
         .district-chhattisgarh:hover { fill: #059669; stroke: #0F172A; stroke-width: 1.5px; }
 
-        .svg-container { 
-            width: 100%; 
-            flex-grow: 1; /* Pushes the text to the bottom uniformly */
-            min-height: 280px; 
-            background: rgba(255, 255, 255, 0.7); 
-            border-radius: 16px; 
-            border: 1px solid rgba(255,255,255,0.5); 
-            position: relative; 
-            overflow: hidden; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
+        .svg-container { width: 100%; flex-grow: 1; min-height: 280px; background: rgba(255, 255, 255, 0.7); border-radius: 16px; border: 1px solid rgba(255,255,255,0.5); position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+
+        /* UPGRADED TOOLTIP STYLING */
+        .map-tooltip { 
+            position: absolute; opacity: 0; background: rgba(15, 23, 42, 0.95); color: #ffffff; 
+            padding: 12px 16px; border-radius: 10px; font-size: 14px; font-weight: 600; 
+            pointer-events: none; transition: opacity 0.2s ease; box-shadow: 0 10px 25px rgba(0,0,0,0.3); 
+            z-index: 1000; min-width: 160px; border: 1px solid rgba(255,255,255,0.15);
         }
 
-        /* Error Message Styling for maps */
-        .map-error { color: #dc2626; font-size: 13px; font-weight: 600; text-align: center; padding: 20px; line-height: 1.5; }
-        .map-error i { display: block; font-size: 28px; margin-bottom: 10px; color: #ef4444; }
-
-        /* Tooltip Styling */
-        .map-tooltip { position: absolute; opacity: 0; background: rgba(15, 23, 42, 0.95); color: #ffffff; padding: 10px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; pointer-events: none; transition: opacity 0.2s ease; box-shadow: 0 4px 15px rgba(0,0,0,0.2); z-index: 1000; white-space: nowrap; border: 1px solid rgba(255,255,255,0.1);}
-
-        /* Login Card */
         .login-section { display: flex; flex-direction: column; width: 100%; height: 100%; }
-        .glass-login-card { 
-            background: rgba(255, 255, 255, 0.95); 
-            backdrop-filter: blur(25px); 
-            border: 1px solid rgba(255, 255, 255, 0.8); 
-            border-radius: 24px; 
-            padding: 35px 30px; 
-            box-shadow: var(--shadow-md); 
-            position: relative; 
-            overflow: hidden; 
-            height: 100%; 
-            display: flex; 
-            flex-direction: column; 
-            justify-content: center; 
-        }
+        .glass-login-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(25px); border: 1px solid rgba(255, 255, 255, 0.8); border-radius: 24px; padding: 35px 30px; box-shadow: var(--shadow-md); position: relative; overflow: hidden; height: 100%; display: flex; flex-direction: column; justify-content: center; }
         .glass-login-card::before { content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 6px; background: linear-gradient(90deg, var(--primary), var(--primary-light)); }
         .glass-login-card h2 { font-size: 24px; font-weight: 800; color: var(--text-dark); margin-bottom: 6px; text-align: center;}
         .glass-login-card p { font-size: 14px; color: var(--text-muted); text-align: center; margin-bottom: 25px; font-weight: 500;}
-        
         .form-group { margin-bottom: 18px; }
         .form-group label { display: block; font-size: 13px; font-weight: 700; color: var(--text-muted); margin-bottom: 8px; }
         .form-control { width: 100%; padding: 14px 16px; border: 1px solid var(--border); border-radius: 12px; font-family: inherit; font-size: 14px; background: #F8FAFC; transition: 0.3s; font-weight: 500;}
         .form-control:focus { outline: none; border-color: var(--primary-light); box-shadow: 0 0 0 4px var(--primary-bg); background: white; }
-        
         .btn-submit { width: 100%; padding: 16px; background: var(--primary); color: white; border: none; border-radius: 12px; font-weight: 800; font-size: 15px; cursor: pointer; transition: 0.3s; margin-top: 10px; box-shadow: 0 4px 15px rgba(2, 132, 199, 0.25); display: flex; justify-content: center; align-items: center; gap: 8px;}
         .btn-submit:hover { background: var(--primary-light); transform: translateY(-2px); box-shadow: 0 8px 25px rgba(2, 132, 199, 0.35); }
-        
         .form-footer { text-align: center; margin-top: 20px; font-size: 13px; font-weight: 600; color: var(--text-muted); }
         .form-footer a { color: var(--primary-light); text-decoration: none; transition: 0.2s; }
         .form-footer a:hover { color: var(--primary); text-decoration: underline; }
 
-        /* PLATFORM CAPABILITIES SECTION */
         .platform-details { max-width: 1440px; margin: 0 auto; width: 100%; padding: 20px 40px 60px 40px; z-index: 10; position: relative; animation: fadeUp 0.8s ease both; animation-delay: 0.4s; }
         .section-title { font-size: 30px; font-weight: 800; text-align: center; margin-bottom: 10px; letter-spacing: -0.5px; color: var(--text-dark); }
-        
         .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 25px; margin-top: 40px;}
         .feature-box { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(15px); border: 1px solid white; padding: 30px; border-radius: 20px; box-shadow: var(--shadow-sm); display: flex; gap: 20px; transition: 0.3s; }
         .feature-box:hover { background: #FFFFFF; transform: translateY(-5px); box-shadow: var(--shadow-md); }
@@ -211,7 +191,6 @@ session_destroy();
         .f-content h3 { font-size: 18px; font-weight: 800; margin-bottom: 8px; color: var(--text-dark); }
         .f-content p { font-size: 14px; color: var(--text-muted); line-height: 1.6; font-weight: 500;}
 
-        /* FOOTER */
         .footer { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; padding: 25px 40px; background: white; border-top: 1px solid var(--border); font-size: 13px; font-weight: 600; color: var(--text-muted); z-index: 10; margin-top: auto; }
         .footer-left { display: flex; flex-direction: column; gap: 6px; }
         .credit-text { font-size: 12px; color: var(--primary-light); font-weight: 700; display: flex; align-items: center; gap: 6px; }
@@ -219,31 +198,10 @@ session_destroy();
         .footer-links a { color: var(--text-muted); text-decoration: none; transition: 0.2s; }
         .footer-links a:hover { color: var(--primary); }
 
-        /* ANIMATIONS & RESPONSIVE */
         @keyframes fadeUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
-
-        @media (max-width: 1200px) { 
-            .dashboard-row { grid-template-columns: 1fr 1fr; } /* Maps side by side */
-            .login-section { grid-column: span 2; max-width: 500px; margin: 0 auto; height: auto;} /* Login centered below */
-            .glass-login-card { padding: 40px 30px; }
-        }
+        @media (max-width: 1200px) { .dashboard-row { grid-template-columns: 1fr 1fr; } .login-section { grid-column: span 2; max-width: 500px; margin: 0 auto; height: auto;} .glass-login-card { padding: 40px 30px; } }
         @media (max-width: 992px) { .hero-title { font-size: 38px; } }
-        @media (max-width: 768px) { 
-            .header-container { flex-direction: column; gap: 15px; text-align: center; padding: 15px 20px; } 
-            .header-left, .header-right { flex-direction: column; align-items: center; justify-content: center; text-align: center;} 
-            .ministry-text { text-align: center; } 
-            .nav-container { padding: 10px 20px; } 
-            .mobile-menu-btn { display: block; } 
-            .nav-links { display: none; width: 100%; flex-direction: column; align-items: flex-start; padding-bottom: 15px; } 
-            .nav-links.active { display: flex; } 
-            .nav-link { width: 100%; padding: 12px 10px; justify-content: flex-start;} 
-            .dashboard-row { grid-template-columns: 1fr; } /* Stack everything */
-            .login-section { grid-column: span 1; }
-            .footer { flex-direction: column; gap: 15px; text-align: center; justify-content: center; } 
-            .footer-left { align-items: center; } 
-            .footer-links { justify-content: center; } 
-            .main-showcase, .platform-details { padding: 30px 20px; }
-        }
+        @media (max-width: 768px) { .header-container { flex-direction: column; gap: 15px; text-align: center; padding: 15px 20px; } .header-left, .header-right { flex-direction: column; align-items: center; justify-content: center; text-align: center;} .nav-container { padding: 10px 20px; } .mobile-menu-btn { display: block; } .nav-links { display: none; width: 100%; flex-direction: column; align-items: flex-start; padding-bottom: 15px; } .nav-links.active { display: flex; } .nav-link { width: 100%; padding: 12px 10px; justify-content: flex-start;} .dashboard-row { grid-template-columns: 1fr; } .login-section { grid-column: span 1; } .footer { flex-direction: column; gap: 15px; text-align: center; justify-content: center; } .footer-left { align-items: center; } .footer-links { justify-content: center; } .main-showcase, .platform-details { padding: 30px 20px; } }
         @media (max-width: 480px) { .hero-title { font-size: 32px; } .stat { min-width: 100%; padding: 15px; } .svg-container { min-height: 220px; } }
     </style>
 </head>
@@ -258,6 +216,7 @@ session_destroy();
     <header class="top-header">
         <div class="header-container">
             <div class="header-left">
+                <!-- Ensure RR.png is correct or use your path -->
                 <img src="RR.png" alt="NIELIT Logo" class="nielit-logo">
                 <div class="header-titles">
                     <span class="hindi-title">राष्ट्रीय इलेक्ट्रॉनिकी एवं सूचना प्रौद्योगिकी संस्थान, भुवनेश्वर</span>
@@ -268,6 +227,7 @@ session_destroy();
                 <div class="ministry-text">
                     <strong>Ministry of Electronics & IT</strong> Government of India
                 </div>
+                <!-- Ensure image_7c2b82.png is correct or use your path -->
                 <img src="image_7c2b82.png" alt="Government of India Emblem" class="emblem">
             </div>
         </div>
@@ -299,10 +259,9 @@ session_destroy();
         </div>
     </div>
 
-    <!-- MAIN SHOWCASE GRID (HERO + 3 COLUMNS) -->
+    <!-- MAIN SHOWCASE GRID -->
     <main class="main-showcase">
         
-        <!-- Center Aligned Intro text -->
         <div class="hero-top">
             <div class="system-badge">
                 <span class="live-dot"></span> TPMS Portal Online
@@ -316,23 +275,18 @@ session_destroy();
             </div>
         </div>
 
-        <!-- The 3 Things in a Row (Perfectly Aligned via Grid Stretch) -->
         <div class="dashboard-row">
             
             <!-- 1. Odisha Map -->
             <div class="map-box odisha-highlight">
-                <div id="odisha-map-container" class="svg-container">
-                    <!-- D3 SVG injected here -->
-                </div>
+                <div id="odisha-map-container" class="svg-container"></div>
                 <h4>Odisha State</h4>
                 <p>Supporting educational initiatives across all districts.</p>
             </div>
 
             <!-- 2. Chhattisgarh Map -->
             <div class="map-box chhattisgarh-highlight">
-                <div id="chhattisgarh-map-container" class="svg-container">
-                    <!-- D3 SVG injected here -->
-                </div>
+                <div id="chhattisgarh-map-container" class="svg-container"></div>
                 <h4>Chhattisgarh State</h4>
                 <p>Expanding digital literacy through partners.</p>
             </div>
@@ -369,10 +323,9 @@ session_destroy();
         </div>
     </main>
 
-    <!-- Interactive Tooltip (Keep Outside Grid) -->
+    <!-- Interactive Tooltip -->
     <div id="map-tooltip" class="map-tooltip"></div>
 
-    <!-- PLATFORM CAPABILITIES SECTION -->
     <section class="platform-details">
         <h2 class="section-title">Platform Capabilities</h2>
         <div class="features-grid">
@@ -415,24 +368,30 @@ session_destroy();
 
     <!-- Interactive Map Logic (D3.js) -->
     <script>
-        // Mobile Menu Toggle
         function toggleMobileMenu() {
-            const navLinks = document.getElementById('navLinks');
-            navLinks.classList.toggle('active');
+            document.getElementById('navLinks').classList.toggle('active');
         }
 
-        // Bulletproof D3.js Map Rendering
         document.addEventListener("DOMContentLoaded", function() {
-            
             const tooltip = d3.select("#map-tooltip");
+
+            // 1. Get the PHP data array into JavaScript
+            const tpData = <?= $tpCountsJson ?>;
+
+            // 2. Smart function to automatically find the correct District Name from the GeoJSON file
+            function getDistrictName(properties) {
+                const possibleKeys = ['NAME_2', 'DISTRICT', 'district', 'dtname', 'Dist_Name', 'name', 'NAME_3'];
+                for (let key of possibleKeys) {
+                    if (properties[key]) return properties[key];
+                }
+                return "Unknown District";
+            }
 
             function drawInteractiveMap(containerId, geojsonPath, districtClass) {
                 const container = d3.select("#" + containerId);
-                
-                // Fallbacks to prevent silent crashes if grid isn't painted yet
                 const rect = container.node().getBoundingClientRect();
-                const width = rect.width || container.node().clientWidth || 400;
-                const height = rect.height || container.node().clientHeight || 280;
+                const width = rect.width || 400;
+                const height = rect.height || 280;
 
                 const svg = container.append("svg")
                     .attr("width", "100%")
@@ -443,7 +402,6 @@ session_destroy();
                 const mapGroup = svg.append("g");
 
                 d3.json(geojsonPath).then(function(geoData) {
-                    
                     const projection = d3.geoMercator().fitSize([width - 30, height - 30], geoData);
                     const pathGenerator = d3.geoPath().projection(projection);
 
@@ -454,11 +412,25 @@ session_destroy();
                         .attr("d", pathGenerator)
                         .attr("class", `district-path ${districtClass}`)
                         .on("mouseover", function(event, d) {
-                            // Handles varying GeoJSON property names for Indian districts
-                            const districtName = d.properties.NAME_2 || d.properties.district || d.properties.dtname || "Unknown District";
+                            // Extract District Name
+                            const districtName = getDistrictName(d.properties);
                             
-                            tooltip.style("opacity", 1)
-                                   .html(`<i class="fas fa-map-marker-alt" style="color:#fbbf24; margin-right:6px;"></i> ${districtName}`);
+                            // Look up the Training Partner count (case insensitive match)
+                            const searchKey = districtName.toLowerCase().trim();
+                            const activeTPs = tpData[searchKey] || 0; // Show 0 if not found in database
+
+                            // Generate Dynamic HTML for Tooltip
+                            const tooltipContent = `
+                                <div style="margin-bottom: 5px;">
+                                    <i class="fas fa-map-marker-alt" style="color:#fbbf24; margin-right:6px;"></i> 
+                                    <strong>${districtName}</strong>
+                                </div>
+                                <div style="font-size: 12px; color: #cbd5e1; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 6px;">
+                                    Registered TPs: <span style="color: #4ade80; font-weight: 800; font-size: 14px;">${activeTPs}</span>
+                                </div>
+                            `;
+                            
+                            tooltip.style("opacity", 1).html(tooltipContent);
                         })
                         .on("mousemove", function(event) {
                             tooltip.style("left", (event.pageX + 15) + "px")
@@ -469,15 +441,7 @@ session_destroy();
                         });
 
                 }).catch(function(error) {
-                    // Clean error boundary if file is missing
                     console.error("Map Error for " + containerId + ": ", error);
-                    container.html(`
-                        <div class="map-error">
-                            <i class="fas fa-exclamation-triangle"></i>
-                            Map file not found.<br>
-                            Please upload <strong>${geojsonPath}</strong> to File Manager.
-                        </div>
-                    `);
                 });
             }
 
