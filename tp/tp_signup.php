@@ -713,11 +713,35 @@ function toggleLegal(){
     }
 }
 
-document.addEventListener('DOMContentLoaded', function(){
-    <?php if(!empty($errors)): ?>cur = 5;<?php endif; ?>
-    if (document.getElementById("stateDropdown").value !== "") populateDistricts();
-    updateUI();
-    toggleLegal();
+document.addEventListener('DOMContentLoaded',function(){
+  <?php if(!empty($errors)): ?>updateUI(5);<?php else: ?>updateUI(1);<?php endif; ?>
+  var lc=document.querySelector('input[name="s9_legal_status"]:checked');
+  if(lc)toggleLegal();
+
+  // ── Enter key → move to next field, never submit ──
+  var form = document.getElementById('tpForm');
+  if(form){
+    form.addEventListener('keydown', function(e){
+      if(e.key !== 'Enter') return;
+
+      var focusable = Array.from(
+        form.querySelectorAll('input:not([type=hidden]):not([disabled]), select:not([disabled]), textarea:not([disabled])')
+      ).filter(function(el){
+        return el.offsetParent !== null; // only visible elements
+      });
+
+      var idx = focusable.indexOf(document.activeElement);
+
+      // If on last field, do nothing (let submit button handle it)
+      if(idx === -1 || idx === focusable.length - 1){
+        e.preventDefault();
+        return;
+      }
+
+      e.preventDefault();
+      focusable[idx + 1].focus();
+    });
+  }
 });
 </script>
 </body>
