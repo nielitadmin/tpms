@@ -1,39 +1,98 @@
 <?php
-// Start a clean session
-session_name('NIELIT_LANDING');
+// 1. CRITICAL: Use the unified session name for the entire application
+session_name('NIELIT_TPMS');
 session_start();
-session_destroy();
 
 // Include Database connection (which loads your .env file and creates $conn)
 require_once 'includes/config.php';
 
-// Fetch dynamic TP counts per district for the interactive maps
+// 2. AUTO-REDIRECT: If user is already logged in, send them to their dashboard
+if (isset($_SESSION['user_role'])) {
+    if ($_SESSION['user_role'] === 'admin') {
+        header("Location: admin/admin_dashboard.php");
+        exit();
+    } else {
+        header("Location: tp/tp_dashboard.php");
+        exit();
+    }
+}
+
+// 3. INTEGRATED LOGIN LOGIC
+$login_error = '';
+
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['login_submit'])) {
+    $email = trim($_POST['email']);
+    $password = trim($_POST['password']);
+
+    if (empty($email) || empty($password)) {
+        $login_error = "Please enter both email and password.";
+    } else {
+        // Secure Prepared Statement
+        $stmt = $conn->prepare("SELECT * FROM users WHERE email = ?");
+        
+        if ($stmt) {
+            $stmt->bind_param("s", $email);
+            $stmt->execute();
+            $result = $stmt->get_result();
+
+            if ($result->num_rows === 1) {
+                $user = $result->fetch_assoc();
+                
+                // Optional Status Check
+                if (isset($user['status']) && $user['status'] !== 'active') {
+                    $login_error = "Account is pending or inactive. Contact Admin.";
+                } 
+                // Verify Password
+                elseif (password_verify($password, $user['password'])) {
+                    // Set Session Variables
+                    $_SESSION['user_id'] = $user['id'];
+                    $_SESSION['user_email'] = $user['email'];
+                    $_SESSION['user_role'] = $user['role']; 
+                    
+                    if(isset($user['name'])) {
+                        $_SESSION['name'] = $user['name'];
+                    }
+
+                    // Smart Routing
+                    if ($user['role'] === 'admin') {
+                        header("Location: admin/admin_dashboard.php");
+                    } else {
+                        header("Location: tp/tp_dashboard.php");
+                    }
+                    exit();
+                } else {
+                    $login_error = "Invalid email or password.";
+                }
+            } else {
+                $login_error = "Invalid email or password.";
+            }
+            $stmt->close();
+        } else {
+            error_log("Login Query Error: " . $conn->error);
+            $login_error = "System error. Please try again later.";
+        }
+    }
+}
+
+// 4. MAP DATA LOGIC
 $districtTPCounts = [];
 
-// Ensure connection exists and query the database
 if (isset($conn) && $conn instanceof mysqli && !$conn->connect_error) {
-    
-    // We are querying the REAL data here. 
-    // IMPORTANT: Your `centers` table MUST have a column named `district`.
     $query = "SELECT district, COUNT(*) as count FROM centers WHERE status = 'Approved' AND district IS NOT NULL GROUP BY district";
     $result = $conn->query($query);
     
     if ($result) {
         while ($row = $result->fetch_assoc()) {
-            // Make the key lowercase to easily match it with the GeoJSON map data later
             $districtName = strtolower(trim($row['district']));
             $districtTPCounts[$districtName] = $row['count'];
         }
     } else {
-        // If the query fails, log it and leave array empty.
         error_log("Map Data Query Failed: " . $conn->error);
     }
 } else {
-    // If DB connection fails, log it and leave array empty.
     error_log("Database connection failed while fetching map data.");
 }
 
-// Convert PHP array to a JSON object for the D3.js script to read at the bottom of the page
 $tpCountsJson = json_encode($districtTPCounts);
 ?>
 
@@ -44,47 +103,23 @@ $tpCountsJson = json_encode($districtTPCounts);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Training Partner System - NIELIT Bhubaneswar</title>
     
-    <!-- Google Fonts & FontAwesome -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <!-- D3.js Library for Maps -->
     <script src="https://d3js.org/d3.v7.min.js"></script>
 
     <style>
         :root {
-            /* Premium Color Palette */
-            --primary: #155E75;        /* Official NIELIT Blue */
-            --primary-light: #0284C7;  
-            --primary-bg: #EFF6FF;     
-            --candidate: #059669;      
-            --candidate-bg: #ECFDF5;
-            --tp: #0D9488;
-            --tp-bg: #CCFBF1;
-            --text-dark: #0F172A;
-            --text-muted: #475569;
-            --bg-body: #F8FAFC;
-            --surface: #FFFFFF;
-            --border: #E2E8F0;
-            --gold: #D97706;
-            --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-            --shadow-md: 0 10px 30px -5px rgba(0, 0, 0, 0.08);
-            --radius-lg: 20px;
+            --primary: #155E75; --primary-light: #0284C7; --primary-bg: #EFF6FF; 
+            --candidate: #059669; --candidate-bg: #ECFDF5; --tp: #0D9488; --tp-bg: #CCFBF1;
+            --text-dark: #0F172A; --text-muted: #475569; --bg-body: #F8FAFC; --surface: #FFFFFF;
+            --border: #E2E8F0; --gold: #D97706; --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 10px 30px -5px rgba(0, 0, 0, 0.08); --radius-lg: 20px;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
-
-        body {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            color: var(--text-dark);
-            background-color: var(--bg-body);
-            min-height: 100vh; 
-            display: flex;
-            flex-direction: column;
-            overflow-x: hidden;
-        }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; color: var(--text-dark); background-color: var(--bg-body); min-height: 100vh; display: flex; flex-direction: column; overflow-x: hidden; }
 
         /* HEADER & NAV */
         .top-header { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); z-index: 100; position: relative; width: 100%; }
@@ -159,7 +194,6 @@ $tpCountsJson = json_encode($districtTPCounts);
 
         .svg-container { width: 100%; flex-grow: 1; min-height: 280px; background: rgba(255, 255, 255, 0.7); border-radius: 16px; border: 1px solid rgba(255,255,255,0.5); position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; }
 
-        /* UPGRADED TOOLTIP STYLING */
         .map-tooltip { 
             position: absolute; opacity: 0; background: rgba(15, 23, 42, 0.95); color: #ffffff; 
             padding: 12px 16px; border-radius: 10px; font-size: 14px; font-weight: 600; 
@@ -167,16 +201,21 @@ $tpCountsJson = json_encode($districtTPCounts);
             z-index: 1000; min-width: 160px; border: 1px solid rgba(255,255,255,0.15);
         }
 
+        /* UPGRADED LOGIN CARD */
         .login-section { display: flex; flex-direction: column; width: 100%; height: 100%; }
         .glass-login-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(25px); border: 1px solid rgba(255, 255, 255, 0.8); border-radius: 24px; padding: 35px 30px; box-shadow: var(--shadow-md); position: relative; overflow: hidden; height: 100%; display: flex; flex-direction: column; justify-content: center; }
         .glass-login-card::before { content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 6px; background: linear-gradient(90deg, var(--primary), var(--primary-light)); }
         .glass-login-card h2 { font-size: 24px; font-weight: 800; color: var(--text-dark); margin-bottom: 6px; text-align: center;}
-        .glass-login-card p { font-size: 14px; color: var(--text-muted); text-align: center; margin-bottom: 25px; font-weight: 500;}
+        .glass-login-card p { font-size: 14px; color: var(--text-muted); text-align: center; margin-bottom: 20px; font-weight: 500;}
+        
+        /* New Error Alert CSS */
+        .login-error-alert { background-color: #FEF2F2; color: #DC2626; border: 1px solid #FECACA; padding: 10px 15px; border-radius: 8px; font-size: 13px; font-weight: 600; margin-bottom: 15px; display: flex; align-items: center; gap: 8px; }
+        
         .form-group { margin-bottom: 18px; }
         .form-group label { display: block; font-size: 13px; font-weight: 700; color: var(--text-muted); margin-bottom: 8px; }
         .form-control { width: 100%; padding: 14px 16px; border: 1px solid var(--border); border-radius: 12px; font-family: inherit; font-size: 14px; background: #F8FAFC; transition: 0.3s; font-weight: 500;}
         .form-control:focus { outline: none; border-color: var(--primary-light); box-shadow: 0 0 0 4px var(--primary-bg); background: white; }
-        .btn-submit { width: 100%; padding: 16px; background: var(--primary); color: white; border: none; border-radius: 12px; font-weight: 800; font-size: 15px; cursor: pointer; transition: 0.3s; margin-top: 10px; box-shadow: 0 4px 15px rgba(2, 132, 199, 0.25); display: flex; justify-content: center; align-items: center; gap: 8px;}
+        .btn-submit { width: 100%; padding: 16px; background: var(--primary); color: white; border: none; border-radius: 12px; font-weight: 800; font-size: 15px; cursor: pointer; transition: 0.3s; margin-top: 5px; box-shadow: 0 4px 15px rgba(2, 132, 199, 0.25); display: flex; justify-content: center; align-items: center; gap: 8px;}
         .btn-submit:hover { background: var(--primary-light); transform: translateY(-2px); box-shadow: 0 8px 25px rgba(2, 132, 199, 0.35); }
         .form-footer { text-align: center; margin-top: 20px; font-size: 13px; font-weight: 600; color: var(--text-muted); }
         .form-footer a { color: var(--primary-light); text-decoration: none; transition: 0.2s; }
@@ -216,7 +255,6 @@ $tpCountsJson = json_encode($districtTPCounts);
     <header class="top-header">
         <div class="header-container">
             <div class="header-left">
-                <!-- Ensure RR.png is correct or use your path -->
                 <img src="RR.png" alt="NIELIT Logo" class="nielit-logo">
                 <div class="header-titles">
                     <span class="hindi-title">राष्ट्रीय इलेक्ट्रॉनिकी एवं सूचना प्रौद्योगिकी संस्थान, भुवनेश्वर</span>
@@ -227,7 +265,6 @@ $tpCountsJson = json_encode($districtTPCounts);
                 <div class="ministry-text">
                     <strong>Ministry of Electronics & IT</strong> Government of India
                 </div>
-                <!-- Ensure image_7c2b82.png is correct or use your path -->
                 <img src="image_7c2b82.png" alt="Government of India Emblem" class="emblem">
             </div>
         </div>
@@ -291,28 +328,34 @@ $tpCountsJson = json_encode($districtTPCounts);
                 <p>Expanding digital literacy through partners.</p>
             </div>
 
-            <!-- 3. Login Panel -->
+            <!-- 3. Integrated Login Panel -->
             <div class="login-section">
                 <div class="glass-login-card">
                     <h2>Portal Access</h2>
-                    <p>Login for active partners & administrators</p>
-                    <form action="login.php" method="POST">
+                    <p>Secure login for registered partners & staff</p>
+                    
+                    <!-- DYNAMIC ERROR ALERT -->
+                    <?php if(!empty($login_error)): ?>
+                        <div class="login-error-alert">
+                            <i class="fas fa-exclamation-circle"></i> <?= htmlspecialchars($login_error) ?>
+                        </div>
+                    <?php endif; ?>
+
+                    <form action="index.php" method="POST">
+                        <!-- Hidden field to tell PHP this form was submitted -->
+                        <input type="hidden" name="login_submit" value="1">
+                        
                         <div class="form-group">
                             <label for="email">Email Address</label>
-                            <input type="email" class="form-control" id="email" name="email" placeholder="name@center.com" required>
+                            <input type="email" class="form-control" id="email" name="email" placeholder="name@center.com" value="<?= htmlspecialchars($_POST['email'] ?? '') ?>" required>
                         </div>
                         <div class="form-group">
                             <label for="password">Password</label>
                             <input type="password" class="form-control" id="password" name="password" placeholder="••••••••" required>
                         </div>
-                        <div class="form-group">
-                            <label for="role">Select Role</label>
-                            <select class="form-control" id="role" name="role">
-                                <option value="tp">Training Partner (TP)</option>
-                                <option value="admin">System Administrator</option>
-                            </select>
-                        </div>
+                        
                         <button type="submit" class="btn-submit">Secure Sign In <i class="fas fa-arrow-right"></i></button>
+                        
                         <div class="form-footer">
                             Forgot your password? <a href="#">Recover here</a>
                         </div>
