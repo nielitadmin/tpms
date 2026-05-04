@@ -1,6 +1,5 @@
 <?php
-// CERT-In Compliant: Add security headers via .htaccess or server config:
-// Content-Security-Policy, X-Frame-Options: DENY, X-XSS-Protection, Strict-Transport-Security
+// CERT-In Compliant Security Headers
 session_name('NIELIT_TPMS'); // Unified session name for the entire portal
 session_start();
 require __DIR__ . '/../includes/config.php'; 
@@ -51,7 +50,77 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'final
         ];
         $uploads = [];
         foreach ($upload_fields as $uf) $uploads[$uf] = handle_upload($uf);
-        // TODO: INSERT into database here
+
+        // --- 1. INSERT INTO USERS TABLE (For Login) ---
+        $hashed_password = password_hash($_POST['password'], PASSWORD_DEFAULT);
+        $role = 'tp';
+        $status = 'pending'; // Requires admin approval before login works fully
+        
+        $stmt_user = $conn->prepare("INSERT INTO users (name, email, mobile, password, role, status) VALUES (?, ?, ?, ?, ?, ?)");
+        if ($stmt_user) {
+            $stmt_user->bind_param("ssssss", $_POST['institute_name'], $_POST['email'], $_POST['mobile'], $hashed_password, $role, $status);
+            $stmt_user->execute();
+            $stmt_user->close();
+        }
+
+        // --- 2. INSERT INTO CENTERS TABLE (The Application Form) ---
+        $stmt_center = $conn->prepare("
+            INSERT INTO centers (
+                institute_name, contact_email, mobile, landline, pan_number, website, institute_address, state, district, pincode, est_year, gender, category,
+                s3_name, s3_father_name, s3_designation, s3_qualification, s3_experience, s3_id_type, s3_id_number, s3_address,
+                s4_premises_type, s4_carpet_area, s4_computers, s4_seating, s4_internet,
+                s9_legal_status, s9_prop_name, s9_partnership_date, s9_partnership_reg, s9_society_reg, s9_society_date, s9_cin, s9_incorp_date, s9_dept_name,
+                s12_f1_name, s12_f1_qual, s12_f1_exam, s12_f1_year, s12_f1_board, s13_f1_desig, s13_f1_from, s13_f1_to, s13_f1_org,
+                s12_f2_name, s12_f2_qual, s12_f2_exam, s12_f2_year, s12_f2_board, s13_f2_desig, s13_f2_from, s13_f2_to, s13_f2_org,
+                s14_fy, s14_turnover_it, s14_turnover_other, s14_tax_exempt, s14_students_trained, s14_students_placed,
+                doc_s3_id_proof, doc_s3_signature, doc_s4_layout_map, doc_s4_building_photo, doc_s4_agreement, doc_s9_legal_doc, doc_s9_moa_doc, 
+                doc_s12_faculty1_cert, doc_s12_faculty2_cert, doc_s17_id_proof, doc_s17_signatory_sig, doc_s17_layout_map, doc_s17_reg_cert, 
+                doc_s17_franchise_agmt, doc_s17_registrar_reg, doc_s17_tax_reg, doc_s17_lease_deed, doc_s17_other_doc, doc_s17_building_photos
+            ) VALUES (
+                ?,?,?,?,?,?,?,?,?,?,?,?,?,
+                ?,?,?,?,?,?,?,?,
+                ?,?,?,?,?,
+                ?,?,?,?,?,?,?,?,?,
+                ?,?,?,?,?,?,?,?,?,
+                ?,?,?,?,?,?,?,?,?,
+                ?,?,?,?,?,?,
+                ?,?,?,?,?,?,?,
+                ?,?,?,?,?,?,
+                ?,?,?,?,?,?
+            )
+        ");
+
+        if ($stmt_center) {
+            // Helper functions to handle empty strings (convert to NULL for DB)
+            $date_or_null = function($val) { return !empty($val) ? $val : null; };
+            $int_or_null = function($val) { return ($val !== '' && $val !== null) ? (int)$val : null; };
+
+            $stmt_center->bind_param(
+                "ssssssssssissssssisssssiiiissssssssssssissssssssssisssssssddssiisssssssssssssssssss",
+                
+                // Step 1
+                $_POST['institute_name'], $_POST['email'], $_POST['mobile'], $_POST['landline'], $_POST['pan_number'], $_POST['website'], $_POST['institute_address'], $_POST['state'], $_POST['district'], $_POST['pincode'], $int_or_null($_POST['est_year']), $_POST['gender'], $_POST['category'],
+                // Step 2 (Signatory)
+                $_POST['s3_name'], $_POST['s3_father_name'], $_POST['s3_designation'], $_POST['s3_qualification'], $int_or_null($_POST['s3_experience']), $_POST['s3_id_type'], $_POST['s3_id_number'], $_POST['s3_address'],
+                // Step 2 (Premises)
+                $_POST['s4_premises_type'], $int_or_null($_POST['s4_carpet_area']), $int_or_null($_POST['s4_computers']), $int_or_null($_POST['s4_seating']), $_POST['s4_internet'],
+                // Step 3 (Legal)
+                $int_or_null($_POST['s9_legal_status']), $_POST['s9_prop_name'], $date_or_null($_POST['s9_partnership_date']), $_POST['s9_partnership_reg'], $_POST['s9_society_reg'], $date_or_null($_POST['s9_society_date']), $_POST['s9_cin'], $date_or_null($_POST['s9_incorp_date']), $_POST['s9_dept_name'],
+                // Step 4 (Faculty 1)
+                $_POST['s12_f1_name'], $_POST['s12_f1_qual'], $_POST['s12_f1_exam'], $int_or_null($_POST['s12_f1_year']), $_POST['s12_f1_board'], $_POST['s13_f1_desig'], $date_or_null($_POST['s13_f1_from']), $date_or_null($_POST['s13_f1_to']), $_POST['s13_f1_org'],
+                // Step 4 (Faculty 2)
+                $_POST['s12_f2_name'], $_POST['s12_f2_qual'], $_POST['s12_f2_exam'], $int_or_null($_POST['s12_f2_year']), $_POST['s12_f2_board'], $_POST['s13_f2_desig'], $date_or_null($_POST['s13_f2_from']), $date_or_null($_POST['s13_f2_to']), $_POST['s13_f2_org'],
+                // Step 4 (Financial)
+                $_POST['s14_fy'], $_POST['s14_turnover_it'], $_POST['s14_turnover_other'], $_POST['s14_tax_exempt'], $int_or_null($_POST['s14_students_trained']), $int_or_null($_POST['s14_students_placed']),
+                // Step 5 (Uploads)
+                $uploads['s3_id_proof'], $uploads['s3_signature'], $uploads['s4_layout_map'], $uploads['s4_building_photo'], $uploads['s4_agreement'], $uploads['s9_legal_doc'], $uploads['s9_moa_doc'], 
+                $uploads['s12_faculty1_cert'], $uploads['s12_faculty2_cert'], $uploads['s17_id_proof'], $uploads['s17_signatory_sig'], $uploads['s17_layout_map'], $uploads['s17_reg_cert'], 
+                $uploads['s17_franchise_agmt'], $uploads['s17_registrar_reg'], $uploads['s17_tax_reg'], $uploads['s17_lease_deed'], $uploads['s17_other_doc'], $uploads['s17_building_photos']
+            );
+            $stmt_center->execute();
+            $stmt_center->close();
+        }
+
         unset($_SESSION['tp_draft']);
         $success = true;
     }
@@ -713,35 +782,31 @@ function toggleLegal(){
     }
 }
 
-document.addEventListener('DOMContentLoaded',function(){
-  <?php if(!empty($errors)): ?>updateUI(5);<?php else: ?>updateUI(1);<?php endif; ?>
-  var lc=document.querySelector('input[name="s9_legal_status"]:checked');
-  if(lc)toggleLegal();
+document.addEventListener('DOMContentLoaded', function(){
+    <?php if(!empty($errors)): ?>cur = 5;<?php endif; ?>
+    if (document.getElementById("stateDropdown").value !== "") populateDistricts();
+    updateUI();
+    toggleLegal();
 
-  // ── Enter key → move to next field, never submit ──
-  var form = document.getElementById('tpForm');
-  if(form){
-    form.addEventListener('keydown', function(e){
-      if(e.key !== 'Enter') return;
-
-      var focusable = Array.from(
-        form.querySelectorAll('input:not([type=hidden]):not([disabled]), select:not([disabled]), textarea:not([disabled])')
-      ).filter(function(el){
-        return el.offsetParent !== null; // only visible elements
-      });
-
-      var idx = focusable.indexOf(document.activeElement);
-
-      // If on last field, do nothing (let submit button handle it)
-      if(idx === -1 || idx === focusable.length - 1){
-        e.preventDefault();
-        return;
-      }
-
-      e.preventDefault();
-      focusable[idx + 1].focus();
-    });
-  }
+    // ── Enter key → move to next field, never submit ──
+    var form = document.getElementById('tpForm');
+    if(form){
+        form.addEventListener('keydown', function(e){
+            if(e.key !== 'Enter') return;
+            var focusable = Array.from(
+                form.querySelectorAll('input:not([type=hidden]):not([disabled]), select:not([disabled]), textarea:not([disabled])')
+            ).filter(function(el){
+                return el.offsetParent !== null; 
+            });
+            var idx = focusable.indexOf(document.activeElement);
+            if(idx === -1 || idx === focusable.length - 1){
+                e.preventDefault();
+                return;
+            }
+            e.preventDefault();
+            focusable[idx + 1].focus();
+        });
+    }
 });
 </script>
 </body>
