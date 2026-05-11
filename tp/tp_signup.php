@@ -49,23 +49,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'final
             's17_other_doc','s17_building_photos'
         ];
         $uploads = [];
-        foreach ($upload_fields as $uf) $uploads[$uf] = handle_upload($uf);
+        foreach ($upload_fields as $uf) {
+            $uploads[$uf] = handle_upload($uf);
+        }
 
-        // --- 1. INSERT INTO USERS TABLE (For Login) ---
+        // --- 1. INSERT INTO USERS TABLE ---
         $hashed_password = password_hash($_POST['password'], PASSWORD_DEFAULT);
         $role = 'tp';
-        $status = 'pending'; // Requires admin approval before login works fully
+        $status = 'pending';
         
         $stmt_user = $conn->prepare("INSERT INTO users (name, email, mobile, password, role, status) VALUES (?, ?, ?, ?, ?, ?)");
         if ($stmt_user) {
             $stmt_user->bind_param("ssssss", $_POST['institute_name'], $_POST['email'], $_POST['mobile'], $hashed_password, $role, $status);
-            $stmt_user->execute();
+            if (!$stmt_user->execute()) {
+                $errors[] = "Registration Failed: Email may already be registered (" . $stmt_user->error . ")";
+            }
             $stmt_user->close();
+        } else {
+            $errors[] = "Database Error: Cannot initialize user creation.";
         }
 
-        // --- 2. INSERT INTO CENTERS TABLE (The Application Form) ---
-        $stmt_center = $conn->prepare("
-            INSERT INTO centers (
+        // --- 2. INSERT INTO CENTERS TABLE (Only if User creation succeeded) ---
+        if (empty($errors)) {
+            $sql = "INSERT INTO centers (
                 institute_name, contact_email, mobile, landline, pan_number, website, institute_address, state, district, pincode, est_year, gender, category,
                 s3_name, s3_father_name, s3_designation, s3_qualification, s3_experience, s3_id_type, s3_id_number, s3_address,
                 s4_premises_type, s4_carpet_area, s4_computers, s4_seating, s4_internet,
@@ -76,53 +82,131 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'final
                 doc_s3_id_proof, doc_s3_signature, doc_s4_layout_map, doc_s4_building_photo, doc_s4_agreement, doc_s9_legal_doc, doc_s9_moa_doc, 
                 doc_s12_faculty1_cert, doc_s12_faculty2_cert, doc_s17_id_proof, doc_s17_signatory_sig, doc_s17_layout_map, doc_s17_reg_cert, 
                 doc_s17_franchise_agmt, doc_s17_registrar_reg, doc_s17_tax_reg, doc_s17_lease_deed, doc_s17_other_doc, doc_s17_building_photos
-            ) VALUES (
-                ?,?,?,?,?,?,?,?,?,?,?,?,?,
-                ?,?,?,?,?,?,?,?,
-                ?,?,?,?,?,
-                ?,?,?,?,?,?,?,?,?,
-                ?,?,?,?,?,?,?,?,?,
-                ?,?,?,?,?,?,?,?,?,
-                ?,?,?,?,?,?,
-                ?,?,?,?,?,?,?,
-                ?,?,?,?,?,?,
-                ?,?,?,?,?,?
-            )
-        ");
+            ) VALUES (" . str_repeat('?,', 77) . "?)";
 
-        if ($stmt_center) {
-            // Helper functions to handle empty strings (convert to NULL for DB)
-            $date_or_null = function($val) { return !empty($val) ? $val : null; };
-            $int_or_null = function($val) { return ($val !== '' && $val !== null) ? (int)$val : null; };
+            $stmt_center = $conn->prepare($sql);
+            if ($stmt_center) {
+                // Helpers
+                $date_or_null = function($val) { return !empty($val) ? $val : null; };
+                $int_or_null = function($val) { return ($val !== '' && $val !== null) ? (int)$val : null; };
 
-            $stmt_center->bind_param(
-                "ssssssssssissssssisssssiiiissssssssssssissssssssssisssssssddssiisssssssssssssssssss",
+                // Map exactly 78 variables to match the columns
+                $v1 = $_POST['institute_name'] ?? null;
+                $v2 = $_POST['email'] ?? null;
+                $v3 = $_POST['mobile'] ?? null;
+                $v4 = $_POST['landline'] ?? null;
+                $v5 = $_POST['pan_number'] ?? null;
+                $v6 = $_POST['website'] ?? null;
+                $v7 = $_POST['institute_address'] ?? null;
+                $v8 = $_POST['state'] ?? null;
+                $v9 = $_POST['district'] ?? null;
+                $v10 = $_POST['pincode'] ?? null;
+                $v11 = $int_or_null($_POST['est_year'] ?? null);
+                $v12 = $_POST['gender'] ?? null;
+                $v13 = $_POST['category'] ?? null;
                 
-                // Step 1
-                $_POST['institute_name'], $_POST['email'], $_POST['mobile'], $_POST['landline'], $_POST['pan_number'], $_POST['website'], $_POST['institute_address'], $_POST['state'], $_POST['district'], $_POST['pincode'], $int_or_null($_POST['est_year']), $_POST['gender'], $_POST['category'],
-                // Step 2 (Signatory)
-                $_POST['s3_name'], $_POST['s3_father_name'], $_POST['s3_designation'], $_POST['s3_qualification'], $int_or_null($_POST['s3_experience']), $_POST['s3_id_type'], $_POST['s3_id_number'], $_POST['s3_address'],
-                // Step 2 (Premises)
-                $_POST['s4_premises_type'], $int_or_null($_POST['s4_carpet_area']), $int_or_null($_POST['s4_computers']), $int_or_null($_POST['s4_seating']), $_POST['s4_internet'],
-                // Step 3 (Legal)
-                $int_or_null($_POST['s9_legal_status']), $_POST['s9_prop_name'], $date_or_null($_POST['s9_partnership_date']), $_POST['s9_partnership_reg'], $_POST['s9_society_reg'], $date_or_null($_POST['s9_society_date']), $_POST['s9_cin'], $date_or_null($_POST['s9_incorp_date']), $_POST['s9_dept_name'],
-                // Step 4 (Faculty 1)
-                $_POST['s12_f1_name'], $_POST['s12_f1_qual'], $_POST['s12_f1_exam'], $int_or_null($_POST['s12_f1_year']), $_POST['s12_f1_board'], $_POST['s13_f1_desig'], $date_or_null($_POST['s13_f1_from']), $date_or_null($_POST['s13_f1_to']), $_POST['s13_f1_org'],
-                // Step 4 (Faculty 2)
-                $_POST['s12_f2_name'], $_POST['s12_f2_qual'], $_POST['s12_f2_exam'], $int_or_null($_POST['s12_f2_year']), $_POST['s12_f2_board'], $_POST['s13_f2_desig'], $date_or_null($_POST['s13_f2_from']), $date_or_null($_POST['s13_f2_to']), $_POST['s13_f2_org'],
-                // Step 4 (Financial)
-                $_POST['s14_fy'], $_POST['s14_turnover_it'], $_POST['s14_turnover_other'], $_POST['s14_tax_exempt'], $int_or_null($_POST['s14_students_trained']), $int_or_null($_POST['s14_students_placed']),
-                // Step 5 (Uploads)
-                $uploads['s3_id_proof'], $uploads['s3_signature'], $uploads['s4_layout_map'], $uploads['s4_building_photo'], $uploads['s4_agreement'], $uploads['s9_legal_doc'], $uploads['s9_moa_doc'], 
-                $uploads['s12_faculty1_cert'], $uploads['s12_faculty2_cert'], $uploads['s17_id_proof'], $uploads['s17_signatory_sig'], $uploads['s17_layout_map'], $uploads['s17_reg_cert'], 
-                $uploads['s17_franchise_agmt'], $uploads['s17_registrar_reg'], $uploads['s17_tax_reg'], $uploads['s17_lease_deed'], $uploads['s17_other_doc'], $uploads['s17_building_photos']
-            );
-            $stmt_center->execute();
-            $stmt_center->close();
-        }
+                $v14 = $_POST['s3_name'] ?? null;
+                $v15 = $_POST['s3_father_name'] ?? null;
+                $v16 = $_POST['s3_designation'] ?? null;
+                $v17 = $_POST['s3_qualification'] ?? null;
+                $v18 = $int_or_null($_POST['s3_experience'] ?? null);
+                $v19 = $_POST['s3_id_type'] ?? null;
+                $v20 = $_POST['s3_id_number'] ?? null;
+                $v21 = $_POST['s3_address'] ?? null;
+                
+                $v22 = $_POST['s4_premises_type'] ?? null;
+                $v23 = $int_or_null($_POST['s4_carpet_area'] ?? null);
+                $v24 = $int_or_null($_POST['s4_computers'] ?? null);
+                $v25 = $int_or_null($_POST['s4_seating'] ?? null);
+                $v26 = $_POST['s4_internet'] ?? null;
+                
+                $v27 = $int_or_null($_POST['s9_legal_status'] ?? null);
+                $v28 = $_POST['s9_prop_name'] ?? null;
+                $v29 = $date_or_null($_POST['s9_partnership_date'] ?? null);
+                $v30 = $_POST['s9_partnership_reg'] ?? null;
+                $v31 = $_POST['s9_society_reg'] ?? null;
+                $v32 = $date_or_null($_POST['s9_society_date'] ?? null);
+                $v33 = $_POST['s9_cin'] ?? null;
+                $v34 = $date_or_null($_POST['s9_incorp_date'] ?? null);
+                $v35 = $_POST['s9_dept_name'] ?? null;
+                
+                $v36 = $_POST['s12_f1_name'] ?? null;
+                $v37 = $_POST['s12_f1_qual'] ?? null;
+                $v38 = $_POST['s12_f1_exam'] ?? null;
+                $v39 = $int_or_null($_POST['s12_f1_year'] ?? null);
+                $v40 = $_POST['s12_f1_board'] ?? null;
+                $v41 = $_POST['s13_f1_desig'] ?? null;
+                $v42 = $date_or_null($_POST['s13_f1_from'] ?? null);
+                $v43 = $date_or_null($_POST['s13_f1_to'] ?? null);
+                $v44 = $_POST['s13_f1_org'] ?? null;
+                
+                $v45 = $_POST['s12_f2_name'] ?? null;
+                $v46 = $_POST['s12_f2_qual'] ?? null;
+                $v47 = $_POST['s12_f2_exam'] ?? null;
+                $v48 = $int_or_null($_POST['s12_f2_year'] ?? null);
+                $v49 = $_POST['s12_f2_board'] ?? null;
+                $v50 = $_POST['s13_f2_desig'] ?? null;
+                $v51 = $date_or_null($_POST['s13_f2_from'] ?? null);
+                $v52 = $date_or_null($_POST['s13_f2_to'] ?? null);
+                $v53 = $_POST['s13_f2_org'] ?? null;
+                
+                $v54 = $_POST['s14_fy'] ?? null;
+                $v55 = (!empty($_POST['s14_turnover_it']) ? (float)$_POST['s14_turnover_it'] : null);
+                $v56 = (!empty($_POST['s14_turnover_other']) ? (float)$_POST['s14_turnover_other'] : null);
+                $v57 = $_POST['s14_tax_exempt'] ?? null;
+                $v58 = $int_or_null($_POST['s14_students_trained'] ?? null);
+                $v59 = $int_or_null($_POST['s14_students_placed'] ?? null);
+                
+                $v60 = $uploads['s3_id_proof'] ?? null;
+                $v61 = $uploads['s3_signature'] ?? null;
+                $v62 = $uploads['s4_layout_map'] ?? null;
+                $v63 = $uploads['s4_building_photo'] ?? null;
+                $v64 = $uploads['s4_agreement'] ?? null;
+                $v65 = $uploads['s9_legal_doc'] ?? null;
+                $v66 = $uploads['s9_moa_doc'] ?? null;
+                
+                $v67 = $uploads['s12_faculty1_cert'] ?? null;
+                $v68 = $uploads['s12_faculty2_cert'] ?? null;
+                $v69 = $uploads['s17_id_proof'] ?? null;
+                $v70 = $uploads['s17_signatory_sig'] ?? null;
+                $v71 = $uploads['s17_layout_map'] ?? null;
+                $v72 = $uploads['s17_reg_cert'] ?? null;
+                
+                $v73 = $uploads['s17_franchise_agmt'] ?? null;
+                $v74 = $uploads['s17_registrar_reg'] ?? null;
+                $v75 = $uploads['s17_tax_reg'] ?? null;
+                $v76 = $uploads['s17_lease_deed'] ?? null;
+                $v77 = $uploads['s17_other_doc'] ?? null;
+                $v78 = $uploads['s17_building_photos'] ?? null;
 
-        unset($_SESSION['tp_draft']);
-        $success = true;
+                // Bind parameter types exactly 78 characters long
+                $types = "ssssssssssiss" . "ssssisss" . "siiis" . "issssssss" . "sssisssss" . "sssisssss" . "sddsii" . "sssssss" . "ssssss" . "ssssss";
+
+                $stmt_center->bind_param(
+                    $types,
+                    $v1, $v2, $v3, $v4, $v5, $v6, $v7, $v8, $v9, $v10, $v11, $v12, $v13,
+                    $v14, $v15, $v16, $v17, $v18, $v19, $v20, $v21,
+                    $v22, $v23, $v24, $v25, $v26,
+                    $v27, $v28, $v29, $v30, $v31, $v32, $v33, $v34, $v35,
+                    $v36, $v37, $v38, $v39, $v40, $v41, $v42, $v43, $v44,
+                    $v45, $v46, $v47, $v48, $v49, $v50, $v51, $v52, $v53,
+                    $v54, $v55, $v56, $v57, $v58, $v59,
+                    $v60, $v61, $v62, $v63, $v64, $v65, $v66,
+                    $v67, $v68, $v69, $v70, $v71, $v72,
+                    $v73, $v74, $v75, $v76, $v77, $v78
+                );
+
+                if (!$stmt_center->execute()) {
+                    $errors[] = "Application Save Error: " . $stmt_center->error;
+                } else {
+                    unset($_SESSION['tp_draft']);
+                    $success = true;
+                }
+                $stmt_center->close();
+            } else {
+                $errors[] = "Database Error: Cannot initialize center application saving.";
+            }
+        }
     }
 }
 
