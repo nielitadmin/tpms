@@ -94,28 +94,6 @@ if (isset($conn) && $conn instanceof mysqli && !$conn->connect_error) {
 }
 
 $tpCountsJson = json_encode($districtTPCounts);
-
-// 5. ADMIN NOTICES FETCH LOGIC
-$admin_notices = [];
-if (isset($conn) && $conn instanceof mysqli && !$conn->connect_error) {
-    // Modify this query to match your actual database schema for notices
-    $notice_query = "SELECT title, file_path, created_at FROM notices WHERE status = 'published' ORDER BY created_at DESC LIMIT 5";
-    $notice_result = $conn->query($notice_query);
-    if ($notice_result && $notice_result->num_rows > 0) {
-        while ($row = $notice_result->fetch_assoc()) {
-            $admin_notices[] = $row;
-        }
-    }
-}
-
-// Fallback dummy data so the design works even if the database table doesn't exist yet
-if (empty($admin_notices)) {
-    $admin_notices = [
-        ['title' => 'List of Accredited Training Centers updated for Odisha Region.', 'file_path' => '#', 'created_at' => date('Y-m-d')],
-        ['title' => 'Mandatory CSV upload guidelines for newly registered centers.', 'file_path' => '#', 'created_at' => date('Y-m-d', strtotime('-2 days'))],
-        ['title' => 'Notification regarding extension of bulk CBT registration deadline.', 'file_path' => '#', 'created_at' => date('Y-m-d', strtotime('-5 days'))],
-    ];
-}
 ?>
 
 <!DOCTYPE html>
@@ -167,6 +145,21 @@ if (empty($admin_notices)) {
         .nav-btn-highlight { color: #fef08a !important; font-weight: 700; }
         .nav-btn-highlight:hover { background: rgba(254, 240, 138, 0.1) !important; color: #fde047 !important; }
 
+        /* ===== RED BLINKING TEXT ONLY ===== */
+        .nav-blink-text {
+            color: #ef4444 !important; /* Bright red text */
+            font-weight: 700 !important;
+            background-color: transparent !important; /* Ensure NO box background */
+            animation: textRedBlink 1.2s infinite ease-in-out;
+        }
+        .nav-blink-text i {
+            color: #ef4444 !important;
+        }
+        @keyframes textRedBlink {
+            0%, 100% { opacity: 1; text-shadow: 0 0 8px rgba(239, 68, 68, 0.5); }
+            50% { opacity: 0.3; text-shadow: none; }
+        }
+
         .ticker-wrap { background: var(--text-dark); color: white; padding: 8px 0; overflow: hidden; position: relative; z-index: 10; font-size: 13px; font-weight: 600; display: flex; align-items: center; }
         .ticker-label { background: var(--gold); color: white; padding: 3px 12px; border-radius: 4px; font-weight: 800; margin: 0 15px; position: relative; z-index: 2; white-space: nowrap; font-size: 11px; letter-spacing: 0.5px; text-transform: uppercase;}
         .ticker-move { display: inline-block; white-space: nowrap; animation: ticker 40s linear infinite; padding-left: 20px;}
@@ -180,8 +173,12 @@ if (empty($admin_notices)) {
         @keyframes float-3d { 0% { transform: translateY(0) rotateX(0deg) rotateY(0deg) rotateZ(0deg); } 50% { transform: translateY(-30px) rotateX(180deg) rotateY(90deg) rotateZ(45deg); } 100% { transform: translateY(0) rotateX(360deg) rotateY(180deg) rotateZ(90deg); } }
 
         /* DASHBOARD LAYOUT CSS */
-        .main-showcase { max-width: 1440px; margin: 0 auto; width: 100%; padding: 40px 40px 30px 40px; z-index: 10; }
+        .main-showcase { max-width: 1440px; margin: 0 auto; width: 100%; padding: 50px 40px 30px 40px; z-index: 10; }
         .hero-top { text-align: center; max-width: 900px; margin: 0 auto 40px auto; animation: fadeUp 0.8s ease both; }
+        
+        .system-badge { display: inline-flex; align-items: center; gap: 8px; background: white; border: 1px solid var(--border); padding: 8px 18px; border-radius: 50px; font-size: 13px; font-weight: 800; color: var(--candidate); box-shadow: var(--shadow-sm); margin-bottom: 25px; }
+        .live-dot { width: 8px; height: 8px; background: var(--candidate); border-radius: 50%; box-shadow: 0 0 12px var(--candidate); animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(1.3); } 100% { opacity: 1; transform: scale(1); } }
         
         .hero-title { font-size: 46px; font-weight: 800; color: var(--text-dark); letter-spacing: -1px; line-height: 1.15; margin-bottom: 18px;}
         .hero-title span { color: var(--primary); }
@@ -193,100 +190,6 @@ if (empty($admin_notices)) {
         .stat-num { font-size: 28px; font-weight: 800; color: var(--text-dark); line-height: 1;}
         .stat-num span { color: var(--primary); }
         .stat-label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; font-weight: 800; letter-spacing: 0.5px; margin-top: 6px;}
-
-        /* OFFICIAL NOTICE BOARD CSS */
-        .notice-board-wrapper {
-            max-width: 100%;
-            margin: 0 auto 40px auto;
-            animation: fadeUp 0.8s ease both;
-            animation-delay: 0.1s;
-        }
-        .notice-board {
-            background: #ffffff;
-            border-radius: 16px;
-            box-shadow: var(--shadow-md);
-            border: 1px solid var(--border);
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-        }
-        .notice-header {
-            background: linear-gradient(90deg, var(--primary), var(--primary-light));
-            color: #ffffff;
-            padding: 16px 25px;
-            font-size: 16px;
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-        .notice-header-left {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .notice-header a {
-            color: #E0F2FE;
-            font-size: 13px;
-            text-decoration: none;
-            transition: 0.3s;
-        }
-        .notice-header a:hover {
-            color: #FFFFFF;
-            text-decoration: underline;
-        }
-        .notice-body {
-            padding: 0;
-            max-height: 180px;
-            overflow-y: auto;
-        }
-        .notice-item {
-            display: flex;
-            align-items: center;
-            padding: 14px 25px;
-            border-bottom: 1px solid var(--border);
-            text-decoration: none;
-            transition: background 0.2s;
-        }
-        .notice-item:hover { background: var(--primary-bg); }
-        .notice-item:last-child { border-bottom: none; }
-        .notice-date {
-            background: var(--primary-bg);
-            color: var(--primary);
-            padding: 6px 12px;
-            border-radius: 6px;
-            font-size: 12px;
-            font-weight: 700;
-            margin-right: 20px;
-            white-space: nowrap;
-            min-width: 100px;
-            text-align: center;
-            border: 1px solid rgba(2, 132, 199, 0.1);
-        }
-        .notice-title {
-            color: var(--text-dark);
-            font-size: 14px;
-            font-weight: 600;
-            line-height: 1.4;
-            display: flex;
-            align-items: center;
-        }
-        .notice-new-badge {
-            background: #EF4444;
-            color: white;
-            font-size: 10px;
-            padding: 2px 6px;
-            border-radius: 4px;
-            margin-left: 10px;
-            animation: pulse-red 2s infinite;
-        }
-        @keyframes pulse-red { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
-        
-        /* Custom Scrollbar */
-        .notice-body::-webkit-scrollbar { width: 6px; }
-        .notice-body::-webkit-scrollbar-track { background: #f8fafc; }
-        .notice-body::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-        .notice-body::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
         /* THE 3-COLUMN ROW */
         .dashboard-row { display: grid; grid-template-columns: 1fr 1fr 380px; gap: 30px; align-items: stretch; animation: fadeUp 0.8s ease both; animation-delay: 0.2s; }
@@ -320,6 +223,7 @@ if (empty($admin_notices)) {
         .glass-login-card h2 { font-size: 24px; font-weight: 800; color: var(--text-dark); margin-bottom: 6px; text-align: center;}
         .glass-login-card p { font-size: 14px; color: var(--text-muted); text-align: center; margin-bottom: 20px; font-weight: 500;}
         
+        /* New Error Alert CSS */
         .login-error-alert { background-color: #FEF2F2; color: #DC2626; border: 1px solid #FECACA; padding: 10px 15px; border-radius: 8px; font-size: 13px; font-weight: 600; margin-bottom: 15px; display: flex; align-items: center; gap: 8px; }
         
         .form-group { margin-bottom: 18px; }
@@ -349,26 +253,9 @@ if (empty($admin_notices)) {
         .footer-links a:hover { color: var(--primary); }
 
         @keyframes fadeUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
-        
         @media (max-width: 1200px) { .dashboard-row { grid-template-columns: 1fr 1fr; } .login-section { grid-column: span 2; max-width: 500px; margin: 0 auto; height: auto;} .glass-login-card { padding: 40px 30px; } }
         @media (max-width: 992px) { .hero-title { font-size: 38px; } }
-        @media (max-width: 768px) { 
-            .header-container { flex-direction: column; gap: 15px; text-align: center; padding: 15px 20px; } 
-            .header-left, .header-right { flex-direction: column; align-items: center; justify-content: center; text-align: center;} 
-            .nav-container { padding: 10px 20px; } 
-            .mobile-menu-btn { display: block; } 
-            .nav-links { display: none; width: 100%; flex-direction: column; align-items: flex-start; padding-bottom: 15px; } 
-            .nav-links.active { display: flex; } 
-            .nav-link { width: 100%; padding: 12px 10px; justify-content: flex-start;} 
-            .dashboard-row { grid-template-columns: 1fr; } 
-            .login-section { grid-column: span 1; } 
-            .footer { flex-direction: column; gap: 15px; text-align: center; justify-content: center; } 
-            .footer-left { align-items: center; } 
-            .footer-links { justify-content: center; } 
-            .main-showcase, .platform-details { padding: 30px 20px; }
-            .notice-item { flex-direction: column; align-items: flex-start; gap: 8px; }
-            .notice-date { margin-right: 0; }
-        }
+        @media (max-width: 768px) { .header-container { flex-direction: column; gap: 15px; text-align: center; padding: 15px 20px; } .header-left, .header-right { flex-direction: column; align-items: center; justify-content: center; text-align: center;} .nav-container { padding: 10px 20px; } .mobile-menu-btn { display: block; } .nav-links { display: none; width: 100%; flex-direction: column; align-items: flex-start; padding-bottom: 15px; } .nav-links.active { display: flex; } .nav-link { width: 100%; padding: 12px 10px; justify-content: flex-start;} .dashboard-row { grid-template-columns: 1fr; } .login-section { grid-column: span 1; } .footer { flex-direction: column; gap: 15px; text-align: center; justify-content: center; } .footer-left { align-items: center; } .footer-links { justify-content: center; } .main-showcase, .platform-details { padding: 30px 20px; } }
         @media (max-width: 480px) { .hero-title { font-size: 32px; } .stat { min-width: 100%; padding: 15px; } .svg-container { min-height: 220px; } }
     </style>
 </head>
@@ -379,7 +266,6 @@ if (empty($admin_notices)) {
         <div class="shape ring"></div>
     </div>
 
-    <!-- Header -->
     <header class="top-header">
         <div class="header-container">
             <div class="header-left">
@@ -398,7 +284,6 @@ if (empty($admin_notices)) {
         </div>
     </header>
 
-    <!-- Navigation -->
     <nav class="main-nav">
         <div class="nav-container">
             <a href="index.php" class="nav-home-btn">
@@ -408,16 +293,15 @@ if (empty($admin_notices)) {
                 <i class="fas fa-bars"></i>
             </button>
             <div class="nav-links" id="navLinks">
-                <a href="public/our_tps.php" class="nav-link"><i class="fas fa-handshake"></i> Our TPs</a>
                 <a href="public/courses.php" class="nav-link"><i class="fas fa-book"></i> Courses</a>
                 <a href="public/notices.php" class="nav-link"><i class="fas fa-bullhorn"></i> Public Notices</a>
                 <a href="public/contact.php" class="nav-link"><i class="fas fa-headset"></i> Contact Us</a>
+                <a href="public/accreditation.php" class="nav-link nav-blink-text"><i class="fas fa-certificate"></i> Become an Accreditation Partner</a>
                 <a href="tp/tp_signup.php" class="nav-link nav-btn-highlight"><i class="fas fa-user-plus"></i> Register Center</a>
             </div>
         </div>
     </nav>
 
-    <!-- Ticker -->
     <div class="ticker-wrap">
         <div class="ticker-label">System Alerts</div>
         <div class="ticker-move">
@@ -425,10 +309,12 @@ if (empty($admin_notices)) {
         </div>
     </div>
 
-    <!-- MAIN SHOWCASE GRID -->
     <main class="main-showcase">
         
         <div class="hero-top">
+            <div class="system-badge">
+                <span class="live-dot"></span> TPMS Portal Online
+            </div>
             <h1 class="hero-title">Training Partner <span>Management System</span></h1>
             <p class="hero-sub">Empowering educational centers across Odisha and Chhattisgarh with streamlined student management, bulk CBT tracking, and direct administration integration.</p>
             <div class="stats-row">
@@ -438,60 +324,25 @@ if (empty($admin_notices)) {
             </div>
         </div>
 
-        <!-- NEW FORMAL NOTICE BOARD -->
-        <div class="notice-board-wrapper">
-            <div class="notice-board">
-                <div class="notice-header">
-                    <div class="notice-header-left">
-                        <i class="fas fa-clipboard-list"></i> Official Announcements & Notices
-                    </div>
-                    <a href="public/notices.php">View All <i class="fas fa-arrow-right" style="font-size: 11px; margin-left: 3px;"></i></a>
-                </div>
-                <div class="notice-body">
-                    <?php 
-                    $today = date('Y-m-d');
-                    foreach ($admin_notices as $notice): 
-                        $is_new = ($notice['created_at'] === $today);
-                    ?>
-                        <a href="<?= htmlspecialchars($notice['file_path']) ?>" class="notice-item" target="_blank">
-                            <div class="notice-date">
-                                <i class="far fa-calendar-alt"></i> <?= date('d M Y', strtotime($notice['created_at'])) ?>
-                            </div>
-                            <div class="notice-title">
-                                <?= htmlspecialchars($notice['title']) ?>
-                                <?php if($is_new): ?>
-                                    <span class="notice-new-badge">NEW</span>
-                                <?php endif; ?>
-                            </div>
-                        </a>
-                    <?php endforeach; ?>
-                </div>
-            </div>
-        </div>
-
         <div class="dashboard-row">
             
-            <!-- 1. Odisha Map -->
             <div class="map-box odisha-highlight">
                 <div id="odisha-map-container" class="svg-container"></div>
                 <h4>Odisha State</h4>
                 <p>Supporting educational initiatives across all districts.</p>
             </div>
 
-            <!-- 2. Chhattisgarh Map -->
             <div class="map-box chhattisgarh-highlight">
                 <div id="chhattisgarh-map-container" class="svg-container"></div>
                 <h4>Chhattisgarh State</h4>
                 <p>Expanding digital literacy through partners.</p>
             </div>
 
-            <!-- 3. Integrated Login Panel -->
             <div class="login-section">
                 <div class="glass-login-card">
                     <h2>Portal Access</h2>
                     <p>Secure login for registered partners & staff</p>
                     
-                    <!-- DYNAMIC ERROR ALERT -->
                     <?php if(!empty($login_error)): ?>
                         <div class="login-error-alert">
                             <i class="fas fa-exclamation-circle"></i> <?= htmlspecialchars($login_error) ?>
@@ -499,7 +350,6 @@ if (empty($admin_notices)) {
                     <?php endif; ?>
 
                     <form action="index.php" method="POST">
-                        <!-- Hidden field to tell PHP this form was submitted -->
                         <input type="hidden" name="login_submit" value="1">
                         
                         <div class="form-group">
@@ -523,7 +373,6 @@ if (empty($admin_notices)) {
         </div>
     </main>
 
-    <!-- Interactive Tooltip -->
     <div id="map-tooltip" class="map-tooltip"></div>
 
     <section class="platform-details">
@@ -553,7 +402,6 @@ if (empty($admin_notices)) {
         </div>
     </section>
 
-    <!-- FOOTER -->
     <footer class="footer">
         <div class="footer-left">
             <p>&copy; <?= date('Y') ?> NIELIT Bhubaneswar. All Rights Reserved.</p>
@@ -566,7 +414,6 @@ if (empty($admin_notices)) {
         </div>
     </footer>
 
-    <!-- Interactive Map Logic (D3.js) -->
     <script>
         function toggleMobileMenu() {
             document.getElementById('navLinks').classList.toggle('active');
